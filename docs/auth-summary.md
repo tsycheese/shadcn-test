@@ -1,0 +1,520 @@
+# 登录注册功能总结
+
+> 创建日期：2026 年 3 月 19 日  
+> 状态：已完成
+
+---
+
+## 一、技术栈
+
+| 模块 | 技术选型 | 版本 |
+|------|---------|------|
+| **认证框架** | Auth.js (NextAuth.js) v5 | 5.0.0-beta.30 |
+| **密码哈希** | bcryptjs | ^3.0.3 |
+| **表单管理** | React Hook Form | ^7.71.2 |
+| **表单验证** | Zod | ^3.25.76 |
+| **数据库 ORM** | Prisma | ^6.18.0 |
+| **会话策略** | JWT | 内置 |
+
+---
+
+## 二、系统架构图
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         前端 (Next.js)                           │
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │  登录页面     │  │  注册页面     │  │  Dashboard (保护路由) │  │
+│  │  /login      │  │  /register   │  │  /dashboard          │  │
+│  │              │  │              │  │                      │  │
+│  │  LoginForm   │  │ RegisterForm │  │  DashboardHeader     │  │
+│  └──────┬───────┘  └──────┬───────┘  │  UserNav             │  │
+│         │                 │          └──────────────────────┘  │
+│         │ POST /api/auth/signin  │                             │
+│         └─────────┬──────────────┘                             │
+│                   │                                             │
+│  ┌──────────────▼──────────────────────────────────────────┐   │
+│  │              NextAuth.js (Auth.js v5)                    │   │
+│  │  ┌────────────────────────────────────────────────────┐ │   │
+│  │  │  Credentials Provider                               │ │   │
+│  │  │  - 验证邮箱密码                                      │ │   │
+│  │  │  - bcrypt 密码比对                                   │ │   │
+│  │  └────────────────────────────────────────────────────┘ │   │
+│  │  ┌────────────────────────────────────────────────────┐ │   │
+│  │  │  JWT Session                                        │ │   │
+│  │  │  - 7 天有效期                                         │ │   │
+│  │  │  - httpOnly Cookie                                  │ │   │
+│  │  └────────────────────────────────────────────────────┘ │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐                             │
+│  │  /api/auth   │  │  /api/register                            │
+│  │  /[...nextauth] │  │                                      │
+│  └──────────────┘  └──────────────┘                             │
+└─────────────────────────────────────────────────────────────────┘
+                            │
+                            │ Prisma Client
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      数据库 (Neon PostgreSQL)                     │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  User 表                                                 │    │
+│  │  - id (UUID)                                            │    │
+│  │  - email (unique)                                       │    │
+│  │  - passwordHash (bcrypt)                                │    │
+│  │  - name                                                 │    │
+│  │  - emailVerified                                        │    │
+│  │  - createdAt / updatedAt                                │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  VerificationToken 表                                    │    │
+│  │  - identifier / token / expires                         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │  Document 表                                             │    │
+│  │  - id / title / content / ownerId                       │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 三、核心流程图
+
+### 1. 注册流程
+
+```
+用户访问 /register
+        │
+        ▼
+┌───────────────────┐
+│ 填写注册表单       │
+│ - 邮箱             │
+│ - 密码             │
+│ - 确认密码         │
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ 前端验证 (Zod)     │
+│ registerSchema    │
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ POST /api/register │
+└───────────────────┘
+        │
+        ▼
+┌─────────────────────────────────┐
+│ 后端验证 (registerInputSchema)   │
+│ - 邮箱格式                       │
+│ - 密码强度                       │
+└─────────────────────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ 检查邮箱是否已存在 │
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ bcrypt 哈希密码    │
+│ (成本因子 12)       │
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ 创建用户到数据库   │
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ 自动登录           │
+│ signIn()          │
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ 重定向到 /dashboard│
+└───────────────────┘
+```
+
+### 2. 登录流程
+
+```
+用户访问 /login
+        │
+        ▼
+┌───────────────────┐
+│ 填写登录表单       │
+│ - 邮箱             │
+│ - 密码             │
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ 前端验证 (Zod)     │
+│ loginSchema       │
+└───────────────────┘
+        │
+        ▼
+┌─────────────────────────────┐
+│ signIn("credentials", {...}) │
+└─────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────┐
+│ Auth.js authorize 回调           │
+│ 1. 验证邮箱密码格式               │
+│ 2. 查询数据库用户                 │
+│ 3. bcrypt 密码比对                │
+└─────────────────────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ 生成 JWT Token     │
+│ - 包含用户 ID       │
+│ - 7 天有效期        │
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ 设置 httpOnly Cookie │
+└───────────────────┘
+        │
+        ▼
+┌───────────────────┐
+│ 重定向到 /dashboard│
+└───────────────────┘
+```
+
+### 3. 路由保护流程
+
+```
+用户访问 /dashboard
+        │
+        ▼
+┌───────────────────┐
+│ (dashboard)/layout│
+│ auth() 获取会话    │
+└───────────────────┘
+        │
+    ┌───┴───┐
+    │       │
+    ▼       ▼
+  有会话    无会话
+    │       │
+    │       ▼
+    │  ┌───────────────────┐
+    │  │ redirect("/login")│
+    │  └───────────────────┘
+    │
+    ▼
+┌───────────────────┐
+│ 渲染 Dashboard     │
+│ + DashboardHeader │
+│ + UserNav         │
+└───────────────────┘
+```
+
+---
+
+## 四、文件结构
+
+```
+apps/web/
+├── app/
+│   ├── (auth)/                          # 认证页面组（独立布局）
+│   │   ├── layout.tsx                   # 居中卡片布局
+│   │   ├── login/page.tsx               # 登录页面
+│   │   └── register/page.tsx            # 注册页面
+│   │
+│   ├── (dashboard)/                     # 保护路由组
+│   │   ├── layout.tsx                   # 带路由保护的布局
+│   │   ├── dashboard/page.tsx           # Dashboard 首页
+│   │   └── documents/page.tsx           # 文档列表
+│   │
+│   └── api/
+│       ├── auth/[...nextauth]/route.ts  # Auth.js API 路由
+│       └── register/route.ts            # 注册 API
+│
+├── components/
+│   ├── auth/
+│   │   ├── auth-provider.tsx            # Session Provider
+│   │   ├── login-form.tsx               # 登录表单组件
+│   │   └── register-form.tsx            # 注册表单组件
+│   │
+│   └── navigation/
+│       ├── dashboard-header.tsx         # 顶部导航栏
+│       └── user-nav.tsx                 # 用户头像下拉
+│
+└── lib/
+    ├── auth.ts                          # Auth.js 配置
+    ├── mail.ts                          # 邮件服务（待用）
+    └── validations/
+        └── auth.ts                      # Zod Schema
+```
+
+---
+
+## 五、核心代码片段
+
+### 1. Auth.js 配置 (`lib/auth.ts`)
+
+```typescript
+const config: NextAuthConfig = {
+  adapter: PrismaAdapter(prisma) as any,
+  secret: process.env.NEXTAUTH_SECRET,
+  
+  providers: [
+    Credentials({
+      credentials: {
+        email: { type: "email" },
+        password: { type: "password" }
+      },
+      authorize: async (credentials) => {
+        // 1. 验证格式
+        const validated = loginSchema.safeParse(credentials)
+        if (!validated.success) return null
+        
+        // 2. 查询用户
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email }
+        })
+        if (!user || !user.passwordHash) return null
+        
+        // 3. 比对密码
+        const isMatch = await bcrypt.compare(
+          credentials.password,
+          user.passwordHash
+        )
+        if (!isMatch) return null
+        
+        return { id: user.id, email: user.email, name: user.name }
+      },
+    }),
+  ],
+  
+  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
+  
+  callbacks: {
+    jwt({ token, user }) {
+      if (user) token.id = user.id
+      return token
+    },
+    session({ session, token }) {
+      if (session.user) session.user.id = token.id as string
+      return session
+    },
+  },
+}
+```
+
+### 2. 注册 API (`app/api/register/route.ts`)
+
+```typescript
+export async function POST(req: NextRequest) {
+  const body = await req.json()
+  const validated = registerInputSchema.safeParse(body)
+  
+  if (!validated.success) {
+    return NextResponse.json(
+      { error: validated.error.errors?.[0]?.message },
+      { status: 400 }
+    )
+  }
+  
+  const { email, password, name } = validated.data
+  
+  // 检查邮箱是否存在
+  const existingUser = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() }
+  })
+  if (existingUser) {
+    return NextResponse.json(
+      { error: "该邮箱已被注册" },
+      { status: 400 }
+    )
+  }
+  
+  // 哈希密码并创建用户
+  const passwordHash = await bcrypt.hash(password, 12)
+  await prisma.user.create({
+    data: {
+      email: email.toLowerCase(),
+      name: name || email.split("@")[0],
+      passwordHash,
+    },
+  })
+  
+  return NextResponse.json({ success: true })
+}
+```
+
+### 3. 路由保护 (`app/(dashboard)/layout.tsx`)
+
+```typescript
+export default async function DashboardLayout({ children }) {
+  const session = await auth()
+  
+  if (!session?.user) {
+    redirect("/login")
+  }
+  
+  return (
+    <div className="min-h-screen bg-background">
+      <DashboardHeader />
+      <main>{children}</main>
+    </div>
+  )
+}
+```
+
+---
+
+## 六、数据库 Schema
+
+```prisma
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  passwordHash  String?
+  image         String?
+  
+  documents     Document[] @relation("DocumentOwner")
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  title       String   @default("未命名文档")
+  content     Bytes?
+  ownerId     String
+  owner       User     @relation("DocumentOwner", fields: [ownerId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId])
+}
+```
+
+---
+
+## 七、环境变量配置
+
+```bash
+# .env.local
+
+# 数据库
+DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
+
+# NextAuth
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-random-secret-key-here
+
+# 邮件服务（用于邮箱验证/重置密码）
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+MAIL_FROM=noreply@yourapp.com
+```
+
+---
+
+## 八、安全特性
+
+| 安全措施 | 说明 |
+|---------|------|
+| **密码哈希** | bcrypt 成本因子 12 |
+| **JWT 会话** | httpOnly Cookie，7 天有效期 |
+| **邮箱唯一性** | 数据库 unique 约束 |
+| **密码强度** | 至少 6 位，包含大小写字母和数字 |
+| **路由保护** | 未登录自动重定向 |
+| **CSRF 保护** | Auth.js 内置 |
+
+---
+
+## 九、待实现功能
+
+根据规划文档，以下功能尚未实现：
+
+- [ ] 邮箱验证（发送验证邮件）
+- [ ] 忘记密码/重置密码
+- [ ] GitHub/Google OAuth 登录
+- [ ] 双因素认证 (2FA)
+- [ ] 记住我功能
+
+---
+
+## 十、测试命令
+
+```bash
+# 运行单元测试
+pnpm test:run
+
+# 打开 Vitest UI
+pnpm test:ui
+
+# 运行 E2E 测试（待实现）
+pnpm test:e2e
+```
+
+---
+
+## 十一、常见问题
+
+### Q1: MissingSecret 错误
+
+**问题**: `Server [auth][error] MissingSecret: Please define a secret`
+
+**解决**: 
+1. 在 `lib/auth.ts` 中添加 `secret: process.env.NEXTAUTH_SECRET`
+2. 确保 `.env.local` 中 `NEXTAUTH_SECRET` 值没有引号
+
+### Q2: 注册 API 返回 "Required" 错误
+
+**问题**: 前端发送的请求体缺少 `confirmPassword` 字段
+
+**解决**: 
+1. 创建两个 schema：`registerSchema`（前端）和 `registerInputSchema`（后端）
+2. 后端 API 使用 `registerInputSchema` 验证
+
+### Q3: 环境变量未加载
+
+**问题**: `process.env.NEXTAUTH_SECRET` 为 undefined
+
+**解决**: 
+1. 确保 `.env.local` 文件在根目录
+2. 重启开发服务器
+3. 添加 fallback 值：`process.env.NEXTAUTH_SECRET || "fallback-secret"`
+
+---
+
+## 十二、参考资料
+
+- [Auth.js 官方文档](https://authjs.dev/)
+- [NextAuth.js v5 迁移指南](https://authjs.dev/getting-started/upgrade-to-v5)
+- [React Hook Form 官方文档](https://react-hook-form.com/)
+- [Zod 官方文档](https://zod.dev/)
+- [Prisma 官方文档](https://www.prisma.io/docs/)
