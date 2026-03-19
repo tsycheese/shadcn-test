@@ -67,13 +67,15 @@ export async function GET(
     }
 
     // 4. 返回权限信息
+    const permissionLevel = PermissionLevel[permission as keyof typeof PermissionLevel] || 0
+    
     return NextResponse.json({
       documentId,
       userId,
       permission,
       isOwner,
-      canEdit: (PermissionLevel[permission] || 0) >= (PermissionLevel.WRITE || 0),
-      canInvite: (PermissionLevel[permission] || 0) >= (PermissionLevel.ADMIN || 0),
+      canEdit: permissionLevel >= 2, // WRITE = 2
+      canInvite: permissionLevel >= 3, // ADMIN = 3
       canDelete: isOwner, // 只有所有者能删除
     })
   } catch (error) {
