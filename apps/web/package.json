@@ -14,6 +14,7 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@hookform/resolvers": "^5.2.2",
+    "@workspace/database": "workspace:*",
     "@workspace/ui": "workspace:*",
     "bcryptjs": "^3.0.3",
     "lucide-react": "^0.577.0",
@@ -30,6 +31,7 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^25.2.3",
+    "@types/nodemailer": "^7.0.11",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
     "@workspace/eslint-config": "workspace:^",
