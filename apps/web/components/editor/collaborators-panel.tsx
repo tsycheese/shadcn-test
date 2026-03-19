@@ -27,6 +27,11 @@ export function CollaboratorsPanel({ documentId, canManage }: CollaboratorsPanel
           <SheetTitle>协作者管理</SheetTitle>
         </SheetHeader>
         <div className="mt-6">
+          {!canManage && (
+            <div className="p-4 bg-muted rounded-lg mb-4 text-sm">
+              <p>您没有管理权限，只能查看协作者列表。</p>
+            </div>
+          )}
           <CollaboratorsList 
             documentId={documentId} 
             canManage={canManage} 

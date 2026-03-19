@@ -96,12 +96,10 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <SyncStatus synced={isSynced} offline={isOffline} />
-            {permissions?.canInvite && (
-              <CollaboratorsPanel 
-                documentId={docId} 
-                canManage={permissions.canInvite} 
-              />
-            )}
+            <CollaboratorsPanel
+              documentId={docId}
+              canManage={permissions?.canInvite ?? false}
+            />
           </div>
           <UserList provider={provider} />
         </div>
