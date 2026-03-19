@@ -20,7 +20,7 @@ describe("Auth Validations", () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.errors[0].path).toContain("email")
+        expect(result.error.errors?.[0]?.path).toContain("email")
       }
     })
 
@@ -32,7 +32,7 @@ describe("Auth Validations", () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.errors[0].message).toContain("至少 6 位")
+        expect(result.error.errors?.[0]?.message).toContain("至少 6 位")
       }
     })
   })
