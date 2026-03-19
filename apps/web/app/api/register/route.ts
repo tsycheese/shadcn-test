@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@workspace/database"
 import bcrypt from "bcryptjs"
-import { registerSchema } from "@/lib/validations/auth"
+import { registerInputSchema } from "@/lib/validations/auth"
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const validated = registerSchema.safeParse(body)
+    const validated = registerInputSchema.safeParse(body)
 
     if (!validated.success) {
       return NextResponse.json(
@@ -32,11 +32,11 @@ export async function POST(req: NextRequest) {
     // 哈希密码
     const passwordHash = await bcrypt.hash(password, 12)
 
-    // 创建用户
+    // 创建用户 - name 为空时使用邮箱前缀
     const user = await prisma.user.create({
       data: {
         email: email.toLowerCase(),
-        name,
+        name: name || email.split("@")[0],
         passwordHash,
       },
     })

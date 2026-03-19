@@ -42,7 +42,7 @@ export function RegisterForm() {
         body: JSON.stringify({
           email: values.email.toLowerCase(),
           password: values.password,
-          name: values.name,
+          name: values.name || values.email.split("@")[0], // 使用邮箱前缀作为默认名
         }),
       })
 

@@ -6,10 +6,19 @@ import bcrypt from "bcryptjs"
 import { loginSchema } from "@/lib/validations/auth"
 import type { NextAuthConfig } from "next-auth"
 
+// 确保环境变量已加载
+if (!process.env.NEXTAUTH_SECRET) {
+  console.warn("⚠️ NEXTAUTH_SECRET is not set")
+}
+
+if (!process.env.DATABASE_URL) {
+  console.warn("⚠️ DATABASE_URL is not set")
+}
+
 const config: NextAuthConfig = {
   adapter: PrismaAdapter(prisma) as any,
   
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "fallback-secret-for-development",
   
   providers: [
     Credentials({
