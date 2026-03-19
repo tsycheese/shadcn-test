@@ -10,6 +10,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 权限级别枚举
+enum Permission {
+  READ      // 只读
+  WRITE     // 可编辑
+  ADMIN     // 管理员
+}
+
+// 邀请状态枚举
+enum InvitationStatus {
+  PENDING   // 待处理
+  ACCEPTED  // 已接受
+  REJECTED  // 已拒绝
+  EXPIRED   // 已过期
+}
+
 // 用户模型
 model User {
   id            String    @id @default(uuid())
@@ -18,9 +33,11 @@ model User {
   name          String?
   passwordHash  String?
   image         String?
-  
-  documents     Document[] @relation("DocumentOwner")
-  
+
+  documents         Document[]           @relation("DocumentOwner")
+  collaborations    DocumentCollaborator[] @relation("UserCollaborations")
+  invitationsSent   DocumentInvitation[]   @relation("InvitationsSent")
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -36,16 +53,60 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// 文档模型（用于协同编辑）
+// 文档模型
 model Document {
-  id          String   @id @default(uuid())
-  title       String   @default("未命名文档")
-  content     Bytes?   // Yjs 二进制快照
-  ownerId     String
-  owner       User     @relation("DocumentOwner", fields: [ownerId], references: [id])
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String    @id @default(uuid())
+  title         String    @default("未命名文档")
+  content       Bytes?    // Yjs 二进制快照
+  ownerId       String
+  owner         User      @relation("DocumentOwner", fields: [ownerId], references: [id])
+
+  collaborators DocumentCollaborator[] @relation("DocumentCollaborators")
+  invitations   DocumentInvitation[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([ownerId])
+}
+
+// 协作者表
+model DocumentCollaborator {
+  id         String   @id @default(uuid())
+  documentId String
+  userId     String
+  permission Permission @default(READ)
+
+  document   Document @relation("DocumentCollaborators", fields: [documentId], references: [id], onDelete: Cascade)
+  user       User     @relation("UserCollaborations", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // 确保同一用户不能重复协作同一文档
+  @@unique([documentId, userId])
+  @@index([userId])
+  @@index([documentId])
+}
+
+// 文档邀请表
+model DocumentInvitation {
+  id         String           @id @default(uuid())
+  documentId String
+  email      String
+  permission Permission        @default(READ)
+  status     InvitationStatus @default(PENDING)
+  token      String           @unique
+  expires    DateTime
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  invitedBy  String
+  inviter    User     @relation("InvitationsSent", fields: [invitedBy], references: [id])
+
+  createdAt  DateTime  @default(now())
+  acceptedAt DateTime?
+
+  @@index([token])
+  @@index([documentId])
+  @@index([email])
 }
