@@ -1,4 +1,5 @@
-import { DocumentInvitation, Permission } from "@prisma/client"
+import type { DocumentInvitation } from "@prisma/client"
+import { Permission } from "@prisma/client"
 import { prisma } from "@workspace/database"
 import { sendEmail } from "@/lib/mail"
 import { nanoid } from "nanoid"
@@ -189,11 +190,11 @@ async function sendInvitationEmail({
   inviteLink: string
   expires: Date
 }): Promise<void> {
-  const permissionText = {
+  const permissionText: Record<Permission, string> = {
     READ: "只读权限",
     WRITE: "编辑权限",
     ADMIN: "管理员权限",
-  }[permission]
+  }
 
   await sendEmail({
     to,
@@ -203,7 +204,7 @@ async function sendInvitationEmail({
         <h2 style="color: #333;">文档协作邀请</h2>
         <p style="color: #666;"><strong>${inviterName}</strong> 邀请你协作文档：</p>
         <h3 style="color: #0066cc; background: #f5f5f5; padding: 10px; border-radius: 4px;">${documentTitle}</h3>
-        <p style="color: #666;">你的权限：<strong>${permissionText}</strong></p>
+        <p style="color: #666;">你的权限：<strong>${permissionText[permission]}</strong></p>
         
         <div style="text-align: center; margin: 30px 0;">
           <a href="${inviteLink}" 

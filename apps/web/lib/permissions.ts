@@ -1,3 +1,5 @@
+export { Permission } from "@prisma/client"
+export type { Permission as PermissionType } from "@prisma/client"
 import { Permission } from "@prisma/client"
 import { prisma } from "@workspace/database"
 
@@ -47,8 +49,8 @@ export async function checkPermission({
   if (!collaboration) return false
 
   // 权限级别比较
-  return PermissionLevel[collaboration.permission] >= 
-         PermissionLevel[requiredPermission]
+  return (PermissionLevel[collaboration.permission as Permission] || 0) >= 
+         (PermissionLevel[requiredPermission as Permission] || 0)
 }
 
 /**
@@ -78,7 +80,7 @@ export async function getUserPermission(
     (c) => c.userId === userId
   )
 
-  return collaboration?.permission || null
+  return (collaboration?.permission ?? null) as Permission | null
 }
 
 /**
