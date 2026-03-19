@@ -22,13 +22,14 @@ export function CollaboratorsPanel({ documentId, canManage }: CollaboratorsPanel
           协作者
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
-        <SheetHeader>
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto p-6">
+        <SheetHeader className="mb-6">
           <SheetTitle>协作者管理</SheetTitle>
         </SheetHeader>
-        <div className="mt-6">
+        
+        <div className="space-y-4">
           {!canManage && (
-            <div className="p-4 bg-muted rounded-lg mb-4 text-sm">
+            <div className="p-4 bg-muted rounded-lg text-sm">
               <p>您没有管理权限，只能查看协作者列表。</p>
             </div>
           )}
