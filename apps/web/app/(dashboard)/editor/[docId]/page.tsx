@@ -3,14 +3,17 @@
 import { EditorContent } from '@tiptap/react'
 import { useEditor } from '@/lib/editor'
 import { EditorToolbar } from '@/components/editor/editor-toolbar'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, use } from 'react'
 import { Loader2 } from 'lucide-react'
 
-export default function EditorPage({ params }: { params: { docId: string } }) {
-  const [mounted, setMounted] = useState(false)
+export default function EditorPage({ params }: { params: Promise<{ docId: string }> }) {
+  // 使用 React.use() 解包 params Promise (Next.js 16)
+  const { docId } = use(params)
   
+  const [mounted, setMounted] = useState(false)
+
   const { editor, provider, isSynced, isOffline } = useEditor({
-    docId: params.docId,
+    docId: docId,
     userId: 'user-' + Math.random().toString(36).slice(2, 9),
     userName: '匿名用户',
     userColor: '#' + Math.floor(Math.random()*16777215).toString(16),
@@ -75,7 +78,7 @@ export default function EditorPage({ params }: { params: { docId: string } }) {
             )}
           </div>
           <div className="text-muted-foreground">
-            文档 ID: {params.docId}
+            文档 ID: {docId}
           </div>
         </div>
       </div>
