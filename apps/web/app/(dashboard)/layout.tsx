@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
+import { DashboardHeader } from "@/components/navigation/dashboard-header"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -15,7 +16,8 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   
   return (
     <div className="min-h-screen bg-background">
-      {children}
+      <DashboardHeader />
+      <main>{children}</main>
     </div>
   )
 }
