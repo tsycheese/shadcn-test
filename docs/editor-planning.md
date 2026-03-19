@@ -591,3 +591,328 @@ CMD ["pnpm", "start", "--filter=collaboration-server"]
 - [Yjs 官方文档](https://docs.yjs.dev/)
 - [y-websocket](https://github.com/yjs/y-websocket)
 - [Prisma 官方文档](https://www.prisma.io/docs/)
+
+---
+
+## 十三、登录注册页面规划
+
+> 更新日期：2026 年 3 月 19 日
+
+### 一、需求确认
+
+| 需求项 | 选择 |
+|--------|------|
+| **登录方式** | 仅邮箱密码 |
+| **邮箱验证** | 需要 |
+| **密码重置** | 需要 |
+| **会话存储** | JWT (默认) |
+
+---
+
+### 二、技术选型
+
+| 模块 | 方案 |
+|------|------|
+| **认证库** | Auth.js (NextAuth.js) v5 |
+| **密码哈希** | bcryptjs |
+| **表单验证** | Zod + React Hook Form |
+| **会话存储** | JWT (无需额外数据库表) |
+| **邮件服务** | Nodemailer + SMTP |
+
+---
+
+### 三、功能特性
+
+| 功能 | 状态 |
+|------|------|
+| 邮箱密码登录 | ✅ |
+| 用户注册 | ✅ |
+| 邮箱验证 | ✅ |
+| 密码重置 | ✅ |
+| OAuth 登录 | ❌ |
+
+---
+
+### 四、数据库 Schema
+
+```prisma
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  passwordHash  String?
+  image         String?
+  
+  documents     Document[] @relation("DocumentOwner")
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+```
+
+---
+
+### 五、目录结构
+
+```
+apps/web/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/page.tsx
+│   │   ├── register/page.tsx
+│   │   ├── forgot-password/page.tsx
+│   │   ├── reset-password/page.tsx
+│   │   ├── verify-email/page.tsx
+│   │   └── layout.tsx
+│   │
+│   └── api/
+│       ├── auth/
+│       │   └── [...nextauth]/route.ts
+│       ├── register/route.ts
+│       ├── forgot-password/route.ts
+│       ├── reset-password/route.ts
+│       └── verify-email/route.ts
+│
+├── components/
+│   └── auth/
+│       ├── login-form.tsx
+│       ├── register-form.tsx
+│       ├── forgot-password-form.tsx
+│       ├── reset-password-form.tsx
+│       └── auth-provider.tsx
+│
+└── lib/
+    ├── auth.ts
+    ├── mail.ts
+    └── validations/
+        └── auth.ts
+```
+
+---
+
+### 六、API 接口设计
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/api/auth/signin` | 登录 (Auth.js 内置) |
+| POST | `/api/auth/signout` | 登出 (Auth.js 内置) |
+| POST | `/api/register` | 用户注册 |
+| POST | `/api/forgot-password` | 发送重置密码邮件 |
+| POST | `/api/reset-password` | 重置密码 |
+| GET | `/api/verify-email?token=xxx` | 验证邮箱 |
+
+---
+
+### 七、表单验证 Schema
+
+```typescript
+// apps/web/lib/validations/auth.ts
+import * as z from "zod"
+
+export const loginSchema = z.object({
+  email: z.string().email("请输入有效的邮箱地址"),
+  password: z.string().min(6, "密码至少 6 位"),
+})
+
+export const registerSchema = z.object({
+  name: z.string().min(2, "姓名至少 2 个字符").optional(),
+  email: z.string().email("请输入有效的邮箱地址"),
+  password: z.string()
+    .min(6, "密码至少 6 位")
+    .max(100, "密码最多 100 位")
+    .regex(/[A-Z]/, "密码必须包含大写字母")
+    .regex(/[a-z]/, "密码必须包含小写字母")
+    .regex(/[0-9]/, "密码必须包含数字"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "两次输入的密码不一致",
+  path: ["confirmPassword"],
+})
+
+export type LoginSchema = z.infer<typeof loginSchema>
+export type RegisterSchema = z.infer<typeof registerSchema>
+```
+
+---
+
+### 八、Auth.js 配置
+
+```typescript
+// apps/web/lib/auth.ts
+import NextAuth from "next-auth"
+import Credentials from "next-auth/providers/credentials"
+import { PrismaAdapter } from "@auth/prisma-adapter"
+import { prisma } from "@workspace/database"
+import bcrypt from "bcryptjs"
+import { loginSchema } from "@/lib/validations/auth"
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(prisma) as any,
+  
+  providers: [
+    Credentials({
+      name: "credentials",
+      credentials: {
+        email: { label: "邮箱", type: "email" },
+        password: { label: "密码", type: "password" }
+      },
+      authorize: async (credentials) => {
+        const validated = loginSchema.safeParse(credentials)
+        
+        if (!validated.success) return null
+        
+        const { email, password } = validated.data
+        
+        const user = await prisma.user.findUnique({ where: { email } })
+        if (!user || !user.passwordHash) return null
+        
+        const isMatch = await bcrypt.compare(password, user.passwordHash)
+        if (!isMatch) return null
+        
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        }
+      },
+    }),
+  ],
+  
+  pages: {
+    signIn: "/login",
+  },
+  
+  session: {
+    strategy: "jwt",
+  },
+  
+  callbacks: {
+    jwt({ token, user }) {
+      if (user) {
+        token.id = user.id
+      }
+      return token
+    },
+    session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string
+      }
+      return session
+    },
+  },
+})
+```
+
+---
+
+### 九、环境变量配置
+
+```env
+# .env.local
+DATABASE_URL=postgresql://user:password@localhost:5432/shadcn_editor
+
+# NextAuth
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here
+
+# 邮件服务 (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+
+# 邮件配置
+MAIL_FROM=noreply@yourapp.com
+SITE_NAME=Collab Editor
+```
+
+---
+
+### 十、开发路线图
+
+| 阶段 | 任务 | 预计时间 |
+|------|------|---------|
+| **Phase 1** | 安装依赖 | 10 分钟 |
+| | - `next-auth@beta`, `@auth/prisma-adapter` | |
+| | - `bcryptjs`, `@types/bcryptjs` | |
+| | - `react-hook-form`, `@hookform/resolvers` | |
+| | - `nodemailer` | |
+| **Phase 2** | 添加 shadcn/ui 组件 | 10 分钟 |
+| | - Input, Label, Card, Form | |
+| **Phase 3** | 更新 Prisma Schema 并迁移 | 10 分钟 |
+| **Phase 4** | 配置 Auth.js 和 JWT 会话 | 20 分钟 |
+| **Phase 5** | 创建登录/注册页面和表单 | 30 分钟 |
+| **Phase 6** | 实现注册 API 和邮箱验证 | 30 分钟 |
+| **Phase 7** | 实现忘记密码/重置密码 | 30 分钟 |
+| **Phase 8** | 路由保护和用户状态管理 | 20 分钟 |
+
+**总计**: 约 2.5 小时
+
+---
+
+### 十一、需要安装的依赖
+
+```bash
+# 认证
+pnpm add next-auth@beta @auth/prisma-adapter
+
+# 密码哈希
+pnpm add bcryptjs
+pnpm add -D @types/bcryptjs
+
+# 表单
+pnpm add react-hook-form @hookform/resolvers
+
+# 邮件
+pnpm add nodemailer
+
+# shadcn/ui 组件
+pnpm dlx shadcn@latest add input label card form
+```
+
+---
+
+### 十二、注意事项
+
+1. **NEXTAUTH_SECRET**: 生产环境必须使用强随机字符串
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. **邮件服务**: 推荐使用 SendGrid, Resend 或 Gmail App Password
+
+3. **密码安全**: 
+   - 密码至少 6 位，建议包含大小写字母和数字
+   - bcrypt 哈希成本因子建议为 12
+
+4. **邮箱验证**: 
+   - 验证令牌有效期设为 24 小时
+   - 防止重复发送验证邮件
+
+5. **会话安全**:
+   - JWT 过期时间建议 7 天
+   - 启用 HTTP Only Cookie
+   - 生产环境启用 HTTPS
+
+---
+
+### 十三、后续扩展
+
+- [ ] GitHub OAuth 登录
+- [ ] Google OAuth 登录
+- [ ] 双因素认证 (2FA)
+- [ ] 记住我功能
+- [ ] 账户删除功能
+- [ ] 修改邮箱/密码功能
