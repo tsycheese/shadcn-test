@@ -9,7 +9,7 @@ import { Permission, PermissionLevel } from "@/lib/permissions"
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. 获取当前用户
@@ -22,7 +22,7 @@ export async function GET(
     }
 
     const userId = session.user.id
-    const documentId = params.id
+    const { id: documentId } = await params
 
     // 2. 获取文档信息
     const doc = await prisma.document.findUnique({

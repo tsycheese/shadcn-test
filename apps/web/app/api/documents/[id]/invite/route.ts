@@ -9,7 +9,7 @@ import { createInvitation } from "@/lib/invitations"
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -21,7 +21,7 @@ export async function POST(
     }
 
     const userId = session.user.id
-    const documentId = params.id
+    const { id: documentId } = await params
 
     // 检查权限（需要 ADMIN 权限）
     const check = await requirePermission(userId, documentId, Permission.ADMIN)

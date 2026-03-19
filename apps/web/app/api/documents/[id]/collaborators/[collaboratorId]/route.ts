@@ -9,7 +9,7 @@ import { requirePermission, Permission } from "@/lib/permissions"
  */
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string; collaboratorId: string } }
+  { params }: { params: Promise<{ id: string; collaboratorId: string }> }
 ) {
   try {
     const session = await auth()
@@ -21,8 +21,7 @@ export async function PUT(
     }
 
     const userId = session.user.id
-    const documentId = params.id
-    const collaboratorId = params.collaboratorId
+    const { id: documentId, collaboratorId } = await params
 
     // 检查权限（需要 ADMIN 权限）
     const check = await requirePermission(userId, documentId, Permission.ADMIN)
@@ -80,7 +79,7 @@ export async function PUT(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string; collaboratorId: string } }
+  { params }: { params: Promise<{ id: string; collaboratorId: string }> }
 ) {
   try {
     const session = await auth()
@@ -92,8 +91,7 @@ export async function DELETE(
     }
 
     const userId = session.user.id
-    const documentId = params.id
-    const collaboratorId = params.collaboratorId
+    const { id: documentId, collaboratorId } = await params
 
     // 检查权限（需要 ADMIN 权限）
     const check = await requirePermission(userId, documentId, Permission.ADMIN)

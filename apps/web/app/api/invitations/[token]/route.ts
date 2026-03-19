@@ -7,10 +7,11 @@ import { getInvitation } from "@/lib/invitations"
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const invitation = await getInvitation(params.token)
+    const { token } = await params
+    const invitation = await getInvitation(token)
 
     if (!invitation) {
       return NextResponse.json(

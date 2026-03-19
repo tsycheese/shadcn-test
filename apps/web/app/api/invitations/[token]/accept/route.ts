@@ -9,7 +9,7 @@ import { prisma } from "@workspace/database"
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const session = await auth()
@@ -21,13 +21,14 @@ export async function POST(
     }
 
     const userId = session.user.id
+    const { token } = await params
 
     // 接受邀请
-    await acceptInvitation(params.token, userId)
+    await acceptInvitation(token, userId)
 
     // 获取文档 ID
     const invitation = await prisma.documentInvitation.findUnique({
-      where: { token: params.token },
+      where: { token },
       select: { documentId: true },
     })
 
