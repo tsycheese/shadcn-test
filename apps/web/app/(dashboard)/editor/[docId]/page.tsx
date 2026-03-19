@@ -3,6 +3,8 @@
 import { EditorContent } from '@tiptap/react'
 import { useEditor } from '@/lib/editor'
 import { EditorToolbar } from '@/components/editor/editor-toolbar'
+import { SyncStatus } from '@/components/editor/sync-status'
+import { UserList } from '@/components/editor/user-list'
 import { useEffect, useState, use, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 
@@ -61,29 +63,10 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
       </div>
       
       {/* 底部状态栏 */}
-      <div className="border-t p-2 bg-background text-xs text-muted-foreground">
+      <div className="border-t p-2 bg-background text-xs">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {isOffline ? (
-              <span className="flex items-center gap-1 text-orange-600">
-                <span className="w-2 h-2 rounded-full bg-orange-600" />
-                离线模式
-              </span>
-            ) : isSynced ? (
-              <span className="flex items-center gap-1 text-green-600">
-                <span className="w-2 h-2 rounded-full bg-green-600" />
-                已同步
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-yellow-600">
-                <span className="w-2 h-2 rounded-full bg-yellow-600 animate-pulse" />
-                同步中...
-              </span>
-            )}
-          </div>
-          <div className="text-muted-foreground">
-            文档 ID: {docId}
-          </div>
+          <SyncStatus synced={isSynced} offline={isOffline} />
+          <UserList provider={provider} />
         </div>
       </div>
     </div>
