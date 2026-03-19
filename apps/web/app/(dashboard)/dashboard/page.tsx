@@ -49,8 +49,8 @@ export default async function DashboardPage() {
             <CardDescription>管理你的账户信息</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild variant="outline" className="w-full" disabled>
-              敬请期待
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/settings/profile">进入设置</Link>
             </Button>
           </CardContent>
         </Card>
