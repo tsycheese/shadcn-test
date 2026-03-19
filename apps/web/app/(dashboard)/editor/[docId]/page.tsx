@@ -3,20 +3,24 @@
 import { EditorContent } from '@tiptap/react'
 import { useEditor } from '@/lib/editor'
 import { EditorToolbar } from '@/components/editor/editor-toolbar'
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 
 export default function EditorPage({ params }: { params: Promise<{ docId: string }> }) {
   // 使用 React.use() 解包 params Promise (Next.js 16)
   const { docId } = use(params)
-  
+
   const [mounted, setMounted] = useState(false)
+  
+  // 固定 userId 和 userColor，避免每次渲染都变化
+  const userId = useMemo(() => 'user-' + Math.random().toString(36).slice(2, 9), [])
+  const userColor = useMemo(() => '#' + Math.floor(Math.random()*16777215).toString(16), [])
 
   const { editor, provider, isSynced, isOffline } = useEditor({
     docId: docId,
-    userId: 'user-' + Math.random().toString(36).slice(2, 9),
+    userId,
     userName: '匿名用户',
-    userColor: '#' + Math.floor(Math.random()*16777215).toString(16),
+    userColor,
   })
 
   useEffect(() => {
