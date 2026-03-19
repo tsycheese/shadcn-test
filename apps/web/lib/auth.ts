@@ -8,7 +8,9 @@ import type { NextAuthConfig } from "next-auth"
 
 const config: NextAuthConfig = {
   adapter: PrismaAdapter(prisma) as any,
-
+  
+  secret: process.env.NEXTAUTH_SECRET,
+  
   providers: [
     Credentials({
       name: "credentials",
