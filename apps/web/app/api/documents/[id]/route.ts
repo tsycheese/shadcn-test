@@ -8,7 +8,7 @@ import { prisma } from "@workspace/database"
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -19,20 +19,13 @@ export async function GET(
       )
     }
 
+    const { id: documentId } = await params
+
     const document = await prisma.document.findUnique({
-      where: { id: params.id },
-      select: {
-        id: true,
-        title: true,
-        content: true,
-        createdAt: true,
-        updatedAt: true,
+      where: { id: documentId },
+      include: {
         owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
+          select: { id: true, name: true, email: true },
         },
       },
     })
@@ -68,7 +61,7 @@ export async function GET(
  */
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -79,12 +72,13 @@ export async function PUT(
       )
     }
 
+    const { id: documentId } = await params
     const body = await req.json()
     const { title } = body
 
     // 检查文档是否存在且属于当前用户
     const existingDoc = await prisma.document.findUnique({
-      where: { id: params.id },
+      where: { id: documentId },
     })
 
     if (!existingDoc) {
@@ -103,7 +97,7 @@ export async function PUT(
 
     // 更新文档
     const document = await prisma.document.update({
-      where: { id: params.id },
+      where: { id: documentId },
       data: {
         ...(title && { title }),
       },
@@ -125,7 +119,7 @@ export async function PUT(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -136,9 +130,11 @@ export async function DELETE(
       )
     }
 
+    const { id: documentId } = await params
+
     // 检查文档是否存在且属于当前用户
     const existingDoc = await prisma.document.findUnique({
-      where: { id: params.id },
+      where: { id: documentId },
     })
 
     if (!existingDoc) {
@@ -157,7 +153,7 @@ export async function DELETE(
 
     // 删除文档
     await prisma.document.delete({
-      where: { id: params.id },
+      where: { id: documentId },
     })
 
     return NextResponse.json({ success: true })
