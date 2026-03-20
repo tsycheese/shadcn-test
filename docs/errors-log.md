@@ -218,6 +218,78 @@ const userColor = useMemo(() => '#' + Math.floor(Math.random()*16777215).toStrin
 
 ---
 
+## 2026-03-19: Monorepo 环境变量位置问题
+
+### 错误现象
+
+只有 `DATABASE_URL` 能正常加载，其他环境变量（`RESEND_API_KEY`, `MAIL_FROM`, `NEXTAUTH_SECRET` 等）都是 `undefined`。
+
+### 错误原因
+
+在 **monorepo 结构**中，错误地将 `.env.local` 放在了**根目录**：
+
+```
+shadcn-test/
+├── apps/
+│   └── web/
+│       └── ...
+├── packages/
+└── .env.local  ❌ 错误位置！
+```
+
+**Next.js 只会读取自己目录下的环境变量文件**，不会读取 monorepo 根目录的 `.env.local`。
+
+### 解决方案
+
+**`.env.local` 应该放在 `apps/web/.env.local`：**
+
+```
+shadcn-test/
+├── apps/
+│   └── web/
+│       ├── .env.local  ✅ 正确位置
+│       └── ...
+├── packages/
+│   └── database/
+│       └── .env        ✅ Prisma 的环境变量
+└── .env.example        ✅ 示例文件可以放在根目录
+```
+
+### 正确的环境变量配置
+
+**apps/web/.env.local：**
+```bash
+# NextAuth 配置
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-here
+
+# Resend 邮件服务
+RESEND_API_KEY=re_xxxxxxxxxxxxx
+MAIL_FROM=onboarding@resend.dev
+
+# WebSocket 协同服务器
+NEXT_PUBLIC_WS_URL=ws://localhost:3001
+```
+
+**packages/database/.env：**
+```bash
+DATABASE_URL=postgresql://...
+```
+
+### 如何避免
+
+1. **Next.js 应用的环境变量** → 放在 `apps/web/.env.local`
+2. **Prisma 的数据库连接** → 放在 `packages/database/.env`
+3. **示例文件** → 可以放在根目录 `.env.example`
+
+### 学习要点
+
+- Monorepo 结构中，每个应用有自己的环境变量文件
+- Next.js 不会读取 monorepo 根目录的 `.env.local`
+- Prisma 读取自己包目录下的 `.env` 文件
+
+---
+
 ## 通用调试技巧
 
 ### 1. 查看服务器日志
