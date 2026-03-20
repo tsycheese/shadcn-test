@@ -1,4 +1,3 @@
-# Dockerfile
 FROM node:20-alpine
 
 WORKDIR /app
@@ -15,7 +14,7 @@ RUN pnpm install --frozen-lockfile
 # 复制源代码
 COPY . .
 
-# 构建
+# 构建 TypeScript
 RUN pnpm build
 
 # 暴露端口
