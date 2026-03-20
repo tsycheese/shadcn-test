@@ -1,0 +1,5 @@
+{
+  "buildCommand": "pnpm turbo build --filter=@workspace/database --filter=web",
+  "installCommand": "pnpm install",
+  "framework": "nextjs"
+}
