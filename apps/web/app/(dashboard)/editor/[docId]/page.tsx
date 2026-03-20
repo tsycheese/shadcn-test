@@ -13,7 +13,6 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
   // 使用 React.use() 解包 params Promise (Next.js 16)
   const { docId } = use(params)
 
-  const [mounted, setMounted] = useState(false)
   const [permissions, setPermissions] = useState<{
     canEdit: boolean
     canInvite: boolean
@@ -26,7 +25,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
   const userId = useMemo(() => 'user-' + Math.random().toString(36).slice(2, 9), [])
   const userColor = useMemo(() => '#' + Math.floor(Math.random()*16777215).toString(16), [])
 
-  const { editor, provider, isSynced, isOffline } = useEditor({
+  const { editor, provider, isSynced, isOffline, ydoc } = useEditor({
     docId: docId,
     userId,
     userName: '匿名用户',
@@ -54,22 +53,11 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
       })
   }, [docId])
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted || loadingPerms) {
+  // 等待 ydoc 和编辑器都准备好后再渲染
+  if (loadingPerms || !ydoc || !editor) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
-  }
-
-  if (!editor) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>加载编辑器...</p>
       </div>
     )
   }

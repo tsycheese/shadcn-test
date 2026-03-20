@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useLayoutEffect, useMemo, useState } from 'react'
 import { useEditor as useTiptap } from '@tiptap/react'
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
@@ -45,7 +45,8 @@ export function useEditor({
   }, [provider, userName, userColor])
 
   // 初始化 Yjs 和 Provider
-  useEffect(() => {
+  // 使用 useLayoutEffect 避免 React 18+ 的 setState 警告
+  useLayoutEffect(() => {
     const doc = new Y.Doc()
     
     // 1. 离线持久化 (IndexedDB)
@@ -58,35 +59,37 @@ export function useEditor({
       console.error('IndexedDB 错误:', err)
     })
 
-    // 2. WebSocket 协同
-    let wsProvider: WebsocketProvider | null = null
-    if (wsUrl) {
-      wsProvider = new WebsocketProvider(wsUrl, docId, doc)
-      
-      // 设置用户感知信息（用于显示其他用户的光标）
-      wsProvider.awareness.setLocalStateField('user', {
-        id: userId,
-        name: userName,
-        color: userColor
-      })
+    // 2. WebSocket 协同 （暂时搁置）
+    // let wsProvider: WebsocketProvider | null = null
+    // if (wsUrl) {
+    //   wsProvider = new WebsocketProvider(wsUrl, docId, doc)
 
-      // 监听连接状态
-      wsProvider.on('status', (event) => {
-        console.log('WebSocket 状态:', event.status)
-      })
+    //   // 设置用户感知信息
+    //   wsProvider.awareness.setLocalStateField('user', {
+    //     id: userId,
+    //     name: userName,
+    //     color: userColor
+    //   })
 
-      setProvider(wsProvider)
-    }
+    //   // 监听连接状态
+    //   wsProvider.on('status', (event) => {
+    //     console.log('WebSocket 状态:', event.status)
+    //   })
+    // }
 
+    // 同时设置 ydoc 和 provider
     setYdoc(doc)
+    // if (wsProvider) {
+    //   setProvider(wsProvider)
+    // }
 
     // 清理函数
     return () => {
-      wsProvider?.destroy()
+      // wsProvider?.destroy()
       indexeddbProvider.destroy()
       doc.destroy()
     }
-  }, [docId, userId, userName, userColor, wsUrl])
+  }, [docId, userId, wsUrl])
 
   // 创建 Tiptap 编辑器实例
   const editor = useTiptap({
@@ -94,6 +97,7 @@ export function useEditor({
       // 基础套件：段落、标题、列表、代码块等
       StarterKit.configure({
         // 禁用历史记录，因为 Yjs 有自己的历史管理
+        undoRedo: false,
       }),
       // Yjs 协同扩展：同步文档内容（仅在 ydoc 存在时配置）
       ...(ydoc ? [Collaboration.configure({
@@ -102,7 +106,7 @@ export function useEditor({
       })] : []),
       // 协同光标扩展（使用缓存的配置）
       ...cursorExtension,
-    ],
+    ].filter(Boolean),
     // 编辑器可编辑
     editable: true,
     // 避免 SSR 不匹配
