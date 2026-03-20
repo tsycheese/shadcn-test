@@ -36,3 +36,5 @@ npm-debug.log*
 *.pem
 
 .qwen
+
+apps/web/next-env.d.ts
