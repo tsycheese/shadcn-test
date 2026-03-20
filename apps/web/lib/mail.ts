@@ -1,14 +1,18 @@
-import nodemailer from "nodemailer"
+import { Resend } from 'resend'
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-})
+// 延迟初始化 Resend
+let resendInstance: Resend | null = null
+
+function getResend() {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) {
+      throw new Error('Missing RESEND_API_KEY environment variable')
+    }
+    resendInstance = new Resend(apiKey)
+  }
+  return resendInstance
+}
 
 interface SendEmailOptions {
   to: string
@@ -18,12 +22,19 @@ interface SendEmailOptions {
 
 export async function sendEmail({ to, subject, html }: SendEmailOptions) {
   try {
-    await transporter.sendMail({
-      from: process.env.MAIL_FROM,
+    const resend = getResend()
+    const { data, error } = await resend.emails.send({
+      from: process.env.MAIL_FROM || 'onboarding@resend.dev',
       to,
       subject,
       html,
     })
+
+    if (error) {
+      console.error("邮件发送失败:", error)
+      return { success: false, error }
+    }
+
     return { success: true }
   } catch (error) {
     console.error("邮件发送失败:", error)
