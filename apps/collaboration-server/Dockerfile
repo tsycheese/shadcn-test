@@ -10,7 +10,7 @@ RUN apk add --no-cache python3 make g++
 WORKDIR /app
 
 # 复制 package.json 和 pnpm-lock.yaml
-COPY package.json pnpm-lock.yaml ./
+COPY package.json ./
 
 # 安装所有依赖（包括 devDependencies 用于构建）
 RUN pnpm install --frozen-lockfile
