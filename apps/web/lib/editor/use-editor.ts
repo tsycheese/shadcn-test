@@ -1,6 +1,6 @@
 "use client"
 
-import { useLayoutEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useEditor as useTiptap } from '@tiptap/react'
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
@@ -32,23 +32,23 @@ export function useEditor({
   const [isSynced, setIsSynced] = useState(false)
 
   // 缓存协同光标配置，避免每次渲染创建新对象
-  const cursorExtension = useMemo(() => {
-    if (!provider) return []
+  // const cursorExtension = useMemo(() => {
+  //   if (!provider) return []
     
-    return [CollaborationCursor.configure({
-      provider,
-      user: {
-        name: userName,
-        color: userColor
-      },
-    })]
-  }, [provider, userName, userColor])
+  //   return [CollaborationCursor.configure({
+  //     provider,
+  //     user: {
+  //       name: userName,
+  //       color: userColor
+  //     },
+  //   })]
+  // }, [provider, userName, userColor])
 
   // 初始化 Yjs 和 Provider
   // 使用 useLayoutEffect 避免 React 18+ 的 setState 警告
   useLayoutEffect(() => {
     const doc = new Y.Doc()
-    
+
     // 1. 离线持久化 (IndexedDB)
     // 即使用户断网，编辑内容也会保存在浏览器
     const indexeddbProvider = new IndexeddbPersistence(docId, doc)
@@ -58,30 +58,9 @@ export function useEditor({
     indexeddbProvider.on('error', (err: unknown) => {
       console.error('IndexedDB 错误:', err)
     })
-
-    // 2. WebSocket 协同 （暂时搁置）
-    // let wsProvider: WebsocketProvider | null = null
-    // if (wsUrl) {
-    //   wsProvider = new WebsocketProvider(wsUrl, docId, doc)
-
-    //   // 设置用户感知信息
-    //   wsProvider.awareness.setLocalStateField('user', {
-    //     id: userId,
-    //     name: userName,
-    //     color: userColor
-    //   })
-
-    //   // 监听连接状态
-    //   wsProvider.on('status', (event) => {
-    //     console.log('WebSocket 状态:', event.status)
-    //   })
-    // }
-
-    // 同时设置 ydoc 和 provider
+    
+    // 设置 ydoc
     setYdoc(doc)
-    // if (wsProvider) {
-    //   setProvider(wsProvider)
-    // }
 
     // 清理函数
     return () => {
@@ -93,20 +72,21 @@ export function useEditor({
 
   // 创建 Tiptap 编辑器实例
   const editor = useTiptap({
-    extensions: [
+    extensions: ydoc ? [
       // 基础套件：段落、标题、列表、代码块等
       StarterKit.configure({
         // 禁用历史记录，因为 Yjs 有自己的历史管理
         undoRedo: false,
       }),
-      // Yjs 协同扩展：同步文档内容（仅在 ydoc 存在时配置）
-      ...(ydoc ? [Collaboration.configure({
+      // Yjs 协同扩展：同步文档内容
+      Collaboration.configure({
         document: ydoc,
-        field: 'content', // Yjs 字段名
-      })] : []),
-      // 协同光标扩展（使用缓存的配置）
-      ...cursorExtension,
-    ].filter(Boolean),
+      }),
+    ] : [
+      StarterKit.configure({
+        undoRedo: false,
+      }),
+    ],
     // 编辑器可编辑
     editable: true,
     // 避免 SSR 不匹配
@@ -117,8 +97,7 @@ export function useEditor({
         class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl focus:outline-none min-h-[500px] p-4',
       },
     },
-    // 依赖项：仅在必要时重新创建编辑器
-  }, [ydoc, cursorExtension])
+  }, [ydoc])
 
   return {
     editor,

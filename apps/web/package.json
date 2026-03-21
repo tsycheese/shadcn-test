@@ -25,6 +25,7 @@
     "@tiptap/extension-collaboration-cursor": "3.0.0",
     "@tiptap/react": "^3.20.4",
     "@tiptap/starter-kit": "^3.20.4",
+    "@tiptap/y-tiptap": "^3.0.2",
     "@workspace/database": "workspace:*",
     "@workspace/ui": "workspace:*",
     "bcryptjs": "^3.0.3",
@@ -40,6 +41,7 @@
     "react-hook-form": "^7.71.2",
     "resend": "^6.9.4",
     "y-indexeddb": "^9.0.12",
+    "y-protocols": "^1.0.7",
     "y-websocket": "^3.0.0",
     "yjs": "^13.6.30",
     "zod": "^3.25.76"
