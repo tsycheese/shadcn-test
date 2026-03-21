@@ -1,11 +1,12 @@
 "use client"
 
 import { EditorContent } from '@tiptap/react'
-import { useEditor } from '@/lib/editor'
+import { useEditor, useCollaborationCursor } from '@/lib/editor/use-editor'
 import { EditorToolbar } from '@/components/editor/editor-toolbar'
 import { SyncStatus } from '@/components/editor/sync-status'
 import { UserList } from '@/components/editor/user-list'
 import { CollaboratorsPanel } from '@/components/editor/collaborators-panel'
+import { RemoteCursors } from '@/components/editor/remote-cursors'
 import { useEffect, useState, use, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 
@@ -23,14 +24,24 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
 
   // 固定 userId 和 userColor，避免每次渲染都变化
   const userId = useMemo(() => 'user-' + Math.random().toString(36).slice(2, 9), [])
-  const userColor = useMemo(() => '#' + Math.floor(Math.random()*16777215).toString(16), [])
+  const userName = useMemo(() => '用户-' + Math.random().toString(36).slice(2, 5), [])
+  const userColor = useMemo(() => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'), [])
 
   const { editor, provider, isSynced, isOffline, ydoc } = useEditor({
     docId: docId,
     userId,
-    userName: '匿名用户',
+    userName,
     userColor,
   })
+
+  // 使用协同光标 Hook
+  const { remoteCursors } = useCollaborationCursor(
+    provider?.awareness,
+    userId,
+    userName,
+    userColor,
+    editor
+  )
 
   // 加载权限信息
   useEffect(() => {
@@ -70,11 +81,13 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
       {/* 编辑器内容区域 */}
       <div className="flex-1 overflow-auto bg-muted/20">
         <div className="max-w-4xl mx-auto py-8 px-4">
-          <div className="bg-background rounded-lg shadow-sm border min-h-[600px]">
+          <div className="bg-background rounded-lg shadow-sm border min-h-[600px] relative">
             <EditorContent
               editor={editor}
               className="prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none p-6 focus:outline-none"
             />
+            {/* 远程光标渲染层 */}
+            <RemoteCursors editor={editor} remoteCursors={remoteCursors} />
           </div>
         </div>
       </div>
