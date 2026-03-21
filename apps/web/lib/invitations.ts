@@ -12,6 +12,16 @@ interface CreateInvitationOptions {
   expiresIn?: number // 秒
 }
 
+interface SendInvitationEmailOptions {
+  to: string
+  documentTitle: string
+  inviterName: string
+  inviterEmail: string  // 新增：邀请人邮箱
+  permission: Permission
+  inviteLink: string
+  expires: Date
+}
+
 /**
  * 创建文档邀请
  */
@@ -72,6 +82,7 @@ export async function createInvitation({
     to: email,
     documentTitle: invitation.document.title,
     inviterName: invitation.inviter.name || invitation.inviter.email,
+    inviterEmail: invitation.inviter.email,  // 传递邀请人邮箱
     permission,
     inviteLink,
     expires,
@@ -179,17 +190,11 @@ async function sendInvitationEmail({
   to,
   documentTitle,
   inviterName,
+  inviterEmail,
   permission,
   inviteLink,
   expires,
-}: {
-  to: string
-  documentTitle: string
-  inviterName: string
-  permission: Permission
-  inviteLink: string
-  expires: Date
-}): Promise<void> {
+}: SendInvitationEmailOptions): Promise<void> {
   const permissionText: Record<Permission, string> = {
     READ: "只读权限",
     WRITE: "编辑权限",
@@ -199,22 +204,28 @@ async function sendInvitationEmail({
   await sendEmail({
     to,
     subject: `${inviterName} 邀请你协作文档：${documentTitle}`,
+    replyTo: inviterEmail,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #333;">文档协作邀请</h2>
         <p style="color: #666;"><strong>${inviterName}</strong> 邀请你协作文档：</p>
         <h3 style="color: #0066cc; background: #f5f5f5; padding: 10px; border-radius: 4px;">${documentTitle}</h3>
         <p style="color: #666;">你的权限：<strong>${permissionText[permission]}</strong></p>
-        
+
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${inviteLink}" 
-             style="background-color: #0066cc; color: white; padding: 12px 30px; 
+          <a href="${inviteLink}"
+             style="background-color: #0066cc; color: white; padding: 12px 30px;
                     text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
             接受邀请
           </a>
         </div>
-        
-        <p style="color: #999; font-size: 14px; border-top: 1px solid #eee; padding-top: 20px;">
+
+        <p style="color: #999; font-size: 14px; text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+          如有疑问，可以直接联系邀请人：
+          <a href="mailto:${inviterEmail}" style="color: #0066cc;">${inviterEmail}</a>
+        </p>
+
+        <p style="color: #999; font-size: 14px; margin-top: 15px;">
           邀请有效期至：${expires.toLocaleString("zh-CN")}
         </p>
         <p style="color: #999; font-size: 12px;">
