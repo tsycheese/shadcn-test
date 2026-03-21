@@ -3,6 +3,7 @@
  * 支持 Redis 多实例同步和 LevelDB 持久化
  */
 
+import { createServer } from 'http'
 import { WebSocketServer } from 'ws'
 import * as Y from 'yjs'
 import { Redis } from 'ioredis'
@@ -11,6 +12,7 @@ import { randomUUID } from 'crypto'
 
 // 环境变量
 const PORT = parseInt(process.env.PORT || '8080', 10)
+const HEALTH_PORT = parseInt(process.env.HEALTH_PORT || '3000', 10)
 const HOST = process.env.HOST || '0.0.0.0'
 const REDIS_URL = process.env.REDIS_URL
 const DB_PATH = process.env.DB_PATH || './data/yjs-db'
@@ -53,6 +55,21 @@ const wss = new WebSocketServer({
 })
 
 log(`WebSocket 服务器启动在 ws://${HOST}:${PORT}`)
+
+// HTTP 健康检查服务器（供 Railway 健康检查使用）
+const healthServer = createServer((req, res) => {
+  if (req.method === 'GET' && req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' })
+    res.end('OK')
+  } else {
+    res.writeHead(404)
+    res.end()
+  }
+})
+
+healthServer.listen(HEALTH_PORT, HOST, () => {
+  log(`HTTP 健康检查服务器启动在 http://${HOST}:${HEALTH_PORT}`)
+})
 
 // 广播文档更新到 Redis（多实例同步）
 function broadcastUpdate(docName: string, update: Uint8Array, origin: unknown) {
@@ -222,6 +239,10 @@ wss.on('connection', (ws, req) => {
 // 优雅关闭
 process.on('SIGTERM', () => {
   log('收到 SIGTERM，正在关闭服务器...')
+
+  healthServer.close(() => {
+    log('HTTP 健康检查服务器已关闭')
+  })
 
   wss.close(() => {
     log('WebSocket 服务器已关闭')

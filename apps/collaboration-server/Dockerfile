@@ -44,6 +44,7 @@ RUN mkdir -p /app/data && chmod 755 /app/data
 
 # 暴露端口
 EXPOSE 8080
+EXPOSE 3000
 
 # 启动服务器
 CMD ["node", "dist/index.js"]
