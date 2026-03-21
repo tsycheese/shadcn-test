@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google"
+import NextTopLoader from "nextjs-toploader"
 
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -27,6 +28,14 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", fontSans.variable)}
     >
       <body>
+        <NextTopLoader
+          color="#0066cc"
+          height={2}
+          shadow={false}
+          showSpinner={false}
+          crawlSpeed={200}
+          speed={200}
+        />
         <ThemeProvider>
           <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
