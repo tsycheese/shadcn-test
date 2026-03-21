@@ -1,18 +1,20 @@
 "use client"
 
-import { useEffect, useRef, useState } from 'react'
-import type { Editor } from '@tiptap/react'
-import type { RemoteCursor } from '@/lib/editor/use-editor'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react"
+import type { Editor } from "@tiptap/react"
+import type { RemoteCursor } from "@/lib/editor/use-editor"
 
 interface RemoteCursorsProps {
   editor: Editor | null
   remoteCursors: RemoteCursor[]
 }
 
-/**
- * 远程光标渲染组件
- * 在编辑器上方渲染其他用户的光标位置和标签
- */
 export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
   const [cursorPositions, setCursorPositions] = useState<
     Array<{
@@ -23,111 +25,129 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
   >([])
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const rafIdRef = useRef<number | null>(null)
+  const lastUpdateTimeRef = useRef<number>(0)
+  const UPDATE_INTERVAL = 32 // 30fps，足够流畅
 
-  // 根据编辑器内容计算光标位置
-  useEffect(() => {
-    if (!editor || remoteCursors.length === 0) {
+  const cancelRaf = () => {
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+    }
+  }
+
+  // ✅ 核心修复：把 updatePositions 定义为一个 useCallback 函数
+  const updatePositions = useCallback(() => {
+    if (
+      !editor ||
+      !editor.view ||
+      !containerRef.current ||
+      remoteCursors.length === 0
+    ) {
       setCursorPositions([])
       return
     }
 
-    const updatePositions = () => {
-      const positions = remoteCursors
-        .map((cursor) => {
-          if (cursor.position === null) return null
+    const positions = remoteCursors
+      .map((cursor) => {
+        if (cursor.position === null) return null
 
-          // 使用 editor.view.coordsAtPos 获取位置坐标
-          try {
-            const coords = editor.view.coordsAtPos(cursor.position)
-            const editorRect = editor.view.dom.getBoundingClientRect()
-            const containerRect = containerRef.current?.getBoundingClientRect()
+        try {
+          const coords = editor.view.coordsAtPos(cursor.position)
+          const containerRect = containerRef.current!.getBoundingClientRect()
+          const editorDom = editor.view.dom
 
-            if (!containerRect) return null
+          // ✅ 正确计算：coords 是视口坐标，减去容器的视口偏移
+          const top = coords.top - containerRect.top + editorDom.scrollTop
+          const left = coords.left - containerRect.left
 
-            // 计算相对于容器的位置
-            // coords 是相对于视口的坐标
-            // 需要减去容器相对于视口的偏移
-            const top = coords.top - containerRect.top + editor.view.dom.scrollTop
-            const left = coords.left - containerRect.left
-
-            return {
-              cursor,
-              top,
-              left,
-            }
-          } catch {
-            // 如果位置无效，跳过
-            return null
+          return {
+            cursor,
+            top,
+            left,
           }
-        })
-        .filter((p): p is NonNullable<typeof p> => p !== null)
+        } catch {
+          return null
+        }
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null)
 
-      setCursorPositions(positions)
+    setCursorPositions(positions)
+  }, [editor, remoteCursors]) // 依赖项：只有 editor 和 remoteCursors 变化时才重新创建
+
+  // 1. 主逻辑：编辑器事件 + RAF 调度
+  useEffect(() => {
+    if (
+      !editor ||
+      !editor.view ||
+      !containerRef.current ||
+      remoteCursors.length === 0
+    ) {
+      setCursorPositions([])
+      cancelRaf()
+      return
     }
 
-    // 初始计算
-    updatePositions()
+    // 节流版 RAF
+    const scheduleUpdate = (timestamp: number = 0) => {
+      if (timestamp - lastUpdateTimeRef.current > UPDATE_INTERVAL) {
+        updatePositions()
+        lastUpdateTimeRef.current = timestamp
+      }
+      rafIdRef.current = requestAnimationFrame(scheduleUpdate)
+    }
 
-    // 监听编辑器滚动和更新
+    // 初始更新
+    updatePositions()
+    rafIdRef.current = requestAnimationFrame(scheduleUpdate)
+
+    // 编辑器事件监听
     const handleScroll = () => updatePositions()
     const handleUpdate = () => updatePositions()
 
-    editor.view.dom.addEventListener('scroll', handleScroll)
-    editor.on('update', handleUpdate)
-    editor.on('selectionUpdate', handleUpdate)
-
-    // 使用 requestAnimationFrame 定期更新位置以应对布局变化
-    let rafId: number
-    const scheduleUpdate = () => {
-      rafId = requestAnimationFrame(() => {
-        updatePositions()
-        scheduleUpdate()
-      })
-    }
-    scheduleUpdate()
+    editor.view.dom.addEventListener("scroll", handleScroll)
+    editor.on("update", handleUpdate)
+    editor.on("selectionUpdate", handleUpdate)
 
     return () => {
-      cancelAnimationFrame(rafId)
-      editor.view.dom.removeEventListener('scroll', handleScroll)
-      editor.off('update', handleUpdate)
-      editor.off('selectionUpdate', handleUpdate)
+      cancelRaf()
+      editor.view.dom?.removeEventListener("scroll", handleScroll)
+      editor.off("update", handleUpdate)
+      editor.off("selectionUpdate", handleUpdate)
     }
-  }, [editor, remoteCursors])
+  }, [editor, remoteCursors, updatePositions])
 
-  if (!editor || cursorPositions.length === 0) {
-    return null
-  }
+  // 2. 监听 containerRef 挂载：ref 存在后立即更新一次
+  useLayoutEffect(() => {
+    if (containerRef.current && editor) {
+      updatePositions()
+    }
+  }, [containerRef.current, editor])
 
+  // ✅ 核心修复：始终渲染容器，即使没有远程光标
+  // 这样容器会一直存在于 DOM 中，当有远程用户加入时能立即显示
   return (
     <div
       ref={containerRef}
       className="pointer-events-none absolute inset-0 overflow-hidden"
       style={{ zIndex: 50 }}
     >
-      {cursorPositions.map(({ cursor, top, left }, index) => (
+      {cursorPositions.map(({ cursor, top, left }) => (
         <div
-          key={`${cursor.userId}-${index}`}
+          key={`remote-cursor-${cursor.userId}`}
           className="absolute"
-          style={{
-            top: `${top}px`,
-            left: `${left}px`,
-          }}
+          style={{ top: `${top}px`, left: `${left}px` }}
         >
-          {/* 光标竖线 */}
           <div
-            className="absolute h-5 w-0.5"
-            style={{
-              backgroundColor: cursor.color,
-              top: '-2px',
-            }}
+            className="absolute h-5 w-0.5 animate-pulse"
+            style={{ backgroundColor: cursor.color, top: "-2px" }}
           />
-          {/* 用户名标签 */}
           <div
-            className="absolute -top-6 left-0 px-1.5 py-0.5 text-xs font-medium text-white whitespace-nowrap rounded"
+            className="absolute -top-6 left-0 rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-white"
             style={{
               backgroundColor: cursor.color,
-              fontSize: '11px',
-              lineHeight: '1.2',
+              fontSize: "11px",
+              lineHeight: "1.2",
             }}
           >
             {cursor.userName}
