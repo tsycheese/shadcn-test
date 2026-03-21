@@ -1,0 +1,19 @@
+# Railway Monorepo 配置
+# 这个配置用于同时部署 web 和 collaboration-server
+
+[build]
+builder = "NIXPACKS"
+
+[env]
+NODE_VERSION = "20"
+PNPM_VERSION = "9"
+PORT = "8080"
+HOST = "0.0.0.0"
+
+# Web 应用配置
+[web]
+startCommand = "pnpm --filter web start"
+
+# 协同服务器配置
+[collaboration-server]
+startCommand = "pnpm --filter collaboration-server start"
