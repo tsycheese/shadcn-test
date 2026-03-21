@@ -13,7 +13,7 @@ WORKDIR /app
 COPY package.json ./
 
 # 安装所有依赖（包括 devDependencies 用于构建）
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # 构建阶段
 FROM base AS builder
