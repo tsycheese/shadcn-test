@@ -45,9 +45,5 @@ RUN mkdir -p /app/data && chmod 755 /app/data
 # 暴露端口
 EXPOSE 8080
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD nc -z localhost 8080 || exit 1
-
 # 启动服务器
 CMD ["node", "dist/index.js"]
