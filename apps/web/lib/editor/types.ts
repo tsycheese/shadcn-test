@@ -13,6 +13,8 @@ export interface UseEditorOptions {
   userColor?: string
   /** WebSocket 服务器地址 */
   wsUrl?: string
+  /** 是否从数据库加载内容 */
+  loadContentFromDb?: boolean
 }
 
 export interface UseEditorReturn {

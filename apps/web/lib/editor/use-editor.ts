@@ -30,7 +30,8 @@ export interface RemoteCursor {
  * 1. 创建 Yjs 文档
  * 2. 连接 WebSocket 协同服务
  * 3. 启用 IndexedDB 离线持久化
- * 4. 创建 Tiptap 编辑器实例
+ * 4. 从数据库加载初始内容
+ * 5. 创建 Tiptap 编辑器实例
  */
 export function useEditor({
   docId,
@@ -38,10 +39,12 @@ export function useEditor({
   userName = '匿名用户',
   userColor = '#958DF1',
   wsUrl = process.env.NEXT_PUBLIC_WS_URL,
+  loadContentFromDb = true, // 是否从数据库加载内容
 }: UseEditorOptions): UseEditorReturn {
   const [provider, setProvider] = useState<WebsocketProvider | null>(null)
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null)
   const [isSynced, setIsSynced] = useState(false)
+  const [isDbLoaded, setIsDbLoaded] = useState(false)
 
   // 初始化 Yjs 和 Provider
   // 使用 useLayoutEffect 避免 React 18+ 的 setState 警告
@@ -81,8 +84,35 @@ export function useEditor({
       setProvider(null)
     }
 
-    // 设置 ydoc
-    setYdoc(doc)
+    // 3. 从数据库加载内容（如果有）
+    async function loadContent() {
+      if (!loadContentFromDb) {
+        setYdoc(doc)
+        setIsDbLoaded(true)
+        return
+      }
+
+      try {
+        const res = await fetch(`/api/documents/${docId}/content`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.content) {
+            // 将 base64 转换回 Buffer 并应用到 Yjs 文档
+            const contentBuffer = Buffer.from(data.content, 'base64')
+            const update = new Uint8Array(contentBuffer)
+            Y.applyUpdate(doc, update)
+            console.log('已从数据库加载文档内容')
+          }
+        }
+      } catch (error) {
+        console.error('加载数据库内容失败:', error)
+      }
+
+      setYdoc(doc)
+      setIsDbLoaded(true)
+    }
+
+    loadContent()
 
     // 清理函数
     return () => {
@@ -90,7 +120,7 @@ export function useEditor({
       indexeddbProvider.destroy()
       doc.destroy()
     }
-  }, [docId, userId, userName, userColor, wsUrl])
+  }, [docId, userId, userName, userColor, wsUrl, loadContentFromDb])
 
   // 创建 Tiptap 编辑器实例
   const editor = useTiptap({
