@@ -21,6 +21,7 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
       cursor: RemoteCursor
       top: number
       left: number
+      height: number
     }>
   >([])
 
@@ -53,18 +54,24 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
         if (cursor.position === null) return null
 
         try {
+          // 获取光标位置的坐标信息
+          // coordsAtPos 返回包含 top, bottom, left, right 的边界框
           const coords = editor.view.coordsAtPos(cursor.position)
+          
           const containerRect = containerRef.current!.getBoundingClientRect()
           const editorDom = editor.view.dom
 
           // ✅ 正确计算：coords 是视口坐标，减去容器的视口偏移
-          const top = coords.top - containerRect.top + editorDom.scrollTop
           const left = coords.left - containerRect.left
+          // 使用 top 和 bottom 的差值作为精确的行高
+          const height = coords.bottom - coords.top
+          const top = coords.top - containerRect.top + editorDom.scrollTop
 
           return {
             cursor,
             top,
             left,
+            height,
           }
         } catch {
           return null
@@ -132,16 +139,21 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
       className="pointer-events-none absolute inset-0 overflow-hidden"
       style={{ zIndex: 50 }}
     >
-      {cursorPositions.map(({ cursor, top, left }) => (
+      {cursorPositions.map(({ cursor, top, left, height }) => (
         <div
           key={`remote-cursor-${cursor.userId}`}
           className="absolute"
           style={{ top: `${top}px`, left: `${left}px` }}
         >
+          {/* 光标线条 - 高度等于文字行高 */}
           <div
-            className="absolute h-5 w-0.5 animate-pulse"
-            style={{ backgroundColor: cursor.color, top: "-2px" }}
+            className="absolute w-0.5 animate-pulse"
+            style={{ 
+              backgroundColor: cursor.color, 
+              height: `${height}px`,
+            }}
           />
+          {/* 用户名标签 */}
           <div
             className="absolute -top-6 left-0 rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-white"
             style={{
