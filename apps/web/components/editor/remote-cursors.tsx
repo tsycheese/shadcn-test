@@ -28,6 +28,7 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const rafIdRef = useRef<number | null>(null)
   const lastUpdateTimeRef = useRef<number>(0)
+  const editorDomRef = useRef<HTMLElement | null>(null) // 保存 editor.dom 的引用
   const UPDATE_INTERVAL = 32 // 30fps，足够流畅
 
   const cancelRaf = () => {
@@ -84,10 +85,21 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
 
   // 1. 主逻辑：编辑器事件 + RAF 调度
   useEffect(() => {
+    // 安全获取 editor.dom，避免访问未就绪的编辑器
+    const getEditorDom = (): HTMLElement | null => {
+      if (!editor) return null
+      try {
+        // Tiptap 的 editor.view 在未就绪时访问会抛错，用 try-catch 包裹
+        return editor.view?.dom ?? null
+      } catch {
+        return null
+      }
+    }
+
+    const editorDom = getEditorDom()
+
     if (
-      !editor ||
-      !editor.view ||
-      !editor.view.dom ||
+      !editorDom ||
       !containerRef.current ||
       remoteCursors.length === 0
     ) {
@@ -95,6 +107,9 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
       cancelRaf()
       return
     }
+
+    // 保存 editor.dom 引用，用于清理函数（避免访问已销毁的 editor.view）
+    editorDomRef.current = editorDom
 
     // 节流版 RAF
     const scheduleUpdate = (timestamp: number = 0) => {
@@ -113,15 +128,15 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
     const handleScroll = () => updatePositions()
     const handleUpdate = () => updatePositions()
 
-    editor.view.dom.addEventListener("scroll", handleScroll)
+    editorDom.addEventListener("scroll", handleScroll)
     editor.on("update", handleUpdate)
     editor.on("selectionUpdate", handleUpdate)
 
     return () => {
       cancelRaf()
-      // 清理前检查 editor.view 是否存在，避免访问已销毁的编辑器
-      if (editor?.view?.dom) {
-        editor.view.dom.removeEventListener("scroll", handleScroll)
+      // 使用保存的 ref，避免访问已销毁的 editor.view
+      if (editorDomRef.current) {
+        editorDomRef.current.removeEventListener("scroll", handleScroll)
       }
       editor.off("update", handleUpdate)
       editor.off("selectionUpdate", handleUpdate)
