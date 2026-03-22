@@ -15,6 +15,10 @@ export interface UseEditorOptions {
   wsUrl?: string
   /** 是否从数据库加载内容 */
   loadContentFromDb?: boolean
+  /** 是否自动保存到数据库 */
+  autoSaveToDb?: boolean
+  /** 自动保存间隔（毫秒） */
+  autoSaveInterval?: number
 }
 
 export interface UseEditorReturn {
@@ -28,4 +32,8 @@ export interface UseEditorReturn {
   isSynced: boolean
   /** 是否离线模式 */
   isOffline: boolean
+  /** 是否正在保存 */
+  isSaving?: boolean
+  /** 上次保存时间 */
+  lastSavedAt?: Date | null
 }

@@ -40,11 +40,44 @@ export function useEditor({
   userColor = '#958DF1',
   wsUrl = process.env.NEXT_PUBLIC_WS_URL,
   loadContentFromDb = true, // 是否从数据库加载内容
+  autoSaveToDb = true, // 是否自动保存到数据库
+  autoSaveInterval = 5000, // 自动保存间隔（毫秒）
 }: UseEditorOptions): UseEditorReturn {
   const [provider, setProvider] = useState<WebsocketProvider | null>(null)
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null)
   const [isSynced, setIsSynced] = useState(false)
   const [isDbLoaded, setIsDbLoaded] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+
+  // 保存 Yjs 文档到数据库
+  const saveToDatabase = useCallback(async (doc: Y.Doc) => {
+    if (!autoSaveToDb) return
+
+    setIsSaving(true)
+    try {
+      // 获取 Yjs 文档的二进制更新
+      const update = Y.encodeStateAsUpdate(doc)
+      const content = Buffer.from(update).toString('base64')
+
+      const res = await fetch(`/api/documents/${docId}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      })
+
+      if (res.ok) {
+        setLastSavedAt(new Date())
+        console.log('文档已保存到数据库')
+      } else {
+        console.error('保存失败:', await res.text())
+      }
+    } catch (error) {
+      console.error('保存文档失败:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }, [docId, autoSaveToDb])
 
   // 初始化 Yjs 和 Provider
   // 使用 useLayoutEffect 避免 React 18+ 的 setState 警告
@@ -122,6 +155,36 @@ export function useEditor({
     }
   }, [docId, userId, userName, userColor, wsUrl, loadContentFromDb])
 
+  // 4. 自动保存：监听 Yjs 文档变化，debounce 后保存
+  useEffect(() => {
+    if (!autoSaveToDb || !ydoc) return
+
+    let saveTimeout: NodeJS.Timeout | null = null
+
+    // 监听文档更新
+    const updateHandler = () => {
+      // 清除之前的定时器
+      if (saveTimeout) {
+        clearTimeout(saveTimeout)
+      }
+
+      // 设置新的定时器（debounce）
+      saveTimeout = setTimeout(() => {
+        saveToDatabase(ydoc)
+      }, autoSaveInterval)
+    }
+
+    // 监听 Yjs 文档的 update 事件
+    ydoc.on('update', updateHandler)
+
+    return () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout)
+      }
+      ydoc.off('update', updateHandler)
+    }
+  }, [ydoc, autoSaveToDb, autoSaveInterval, saveToDatabase])
+
   // 创建 Tiptap 编辑器实例
   const editor = useTiptap({
     extensions: ydoc
@@ -159,6 +222,8 @@ export function useEditor({
     ydoc,
     isSynced,
     isOffline: !provider?.wsconnected,
+    isSaving,
+    lastSavedAt,
   }
 }
 
