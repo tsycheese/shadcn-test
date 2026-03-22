@@ -45,7 +45,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
     return `[${role}] ${name}`
   }, [permissions?.permission, session?.user?.name, session?.user?.email])
 
-  const { editor, provider, isSynced, isOffline, ydoc } = useEditor({
+  const { editor, provider, isSynced, isOffline, ydoc, isSaving, lastSavedAt } = useEditor({
     docId: docId,
     userId,
     userName,
@@ -115,7 +115,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
       <div className="border-t p-2 bg-background text-xs">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <SyncStatus synced={isSynced} offline={isOffline} />
+            <SyncStatus synced={isSynced} offline={isOffline} isSaving={isSaving} lastSavedAt={lastSavedAt} />
             <CollaboratorsPanel
               documentId={docId}
               canManage={permissions?.canInvite ?? false}
