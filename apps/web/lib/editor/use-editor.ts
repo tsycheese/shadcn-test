@@ -185,6 +185,44 @@ export function useEditor({
     }
   }, [ydoc, autoSaveToDb, autoSaveInterval, saveToDatabase])
 
+  // 5. 页面关闭/离开时强制保存
+  useEffect(() => {
+    if (!autoSaveToDb || !ydoc) return
+
+    const handleBeforeUnload = async () => {
+      // 同步保存（使用 sendBeacon 或同步请求）
+      try {
+        const update = Y.encodeStateAsUpdate(ydoc)
+        const content = Buffer.from(update).toString('base64')
+
+        // 使用 sendBeacon 发送（浏览器会在页面卸载前发送）
+        const blob = new Blob([JSON.stringify({ content })], {
+          type: 'application/json',
+        })
+        navigator.sendBeacon(`/api/documents/${docId}/save`, blob)
+        console.log('页面关闭前已保存文档')
+      } catch (error) {
+        console.error('页面关闭前保存失败:', error)
+      }
+    }
+
+    // 监听页面关闭事件
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // 监听页面隐藏（切换到其他标签页）
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        handleBeforeUnload()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [ydoc, docId, autoSaveToDb])
+
   // 创建 Tiptap 编辑器实例
   const editor = useTiptap({
     extensions: ydoc
