@@ -4,7 +4,7 @@ import { prisma } from "@workspace/database"
 
 /**
  * GET /api/documents
- * 获取当前用户的文档列表
+ * 获取当前用户的文档列表（包括我的文档和协作文档）
  */
 export async function GET(req: NextRequest) {
   try {
@@ -16,16 +16,97 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const documents = await prisma.document.findMany({
-      where: { ownerId: session.user.id },
+    const userId = session.user.id
+
+    // 查询我的文档（创建的）
+    const myDocs = await prisma.document.findMany({
+      where: { ownerId: userId },
       orderBy: { updatedAt: "desc" },
       select: {
         id: true,
         title: true,
         createdAt: true,
         updatedAt: true,
+        ownerId: true,
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        collaborators: {
+          select: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     })
+
+    // 查询协作文档（他人创建，我参与协作的）
+    const collaboratedDocs = await prisma.document.findMany({
+      where: {
+        collaborators: {
+          some: {
+            userId: userId,
+          },
+        },
+        ownerId: {
+          not: userId, // 排除自己创建的文档
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        updatedAt: true,
+        ownerId: true,
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        collaborators: {
+          select: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    // 合并并标记文档类型
+    const documents = [
+      ...myDocs.map((doc) => ({
+        ...doc,
+        type: "owned" as const,
+        collaboratorCount: doc.collaborators.length,
+      })),
+      ...collaboratedDocs.map((doc) => ({
+        ...doc,
+        type: "collaborated" as const,
+        collaboratorCount: doc.collaborators.length,
+      })),
+    ]
+
+    // 按更新时间排序
+    documents.sort((a, b) => 
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    )
 
     return NextResponse.json({ documents })
   } catch (error) {
