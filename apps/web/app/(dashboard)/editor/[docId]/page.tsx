@@ -9,24 +9,41 @@ import { CollaboratorsPanel } from '@/components/editor/collaborators-panel'
 import { RemoteCursors } from '@/components/editor/remote-cursors'
 import { useEffect, useState, use, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import '@/styles/editor.css'
+
+// 权限到角色名称的映射
+const roleLabels: Record<string, string> = {
+  ADMIN: '管理员',
+  WRITE: '编辑者',
+  READ: '访客',
+}
 
 export default function EditorPage({ params }: { params: Promise<{ docId: string }> }) {
   // 使用 React.use() 解包 params Promise (Next.js 16)
   const { docId } = use(params)
+  const { data: session } = useSession()
 
   const [permissions, setPermissions] = useState<{
     canEdit: boolean
     canInvite: boolean
     canDelete: boolean
     isOwner: boolean
+    permission: 'ADMIN' | 'WRITE' | 'READ'
   } | null>(null)
   const [loadingPerms, setLoadingPerms] = useState(true)
 
   // 固定 userId 和 userColor，避免每次渲染都变化
-  const userId = useMemo(() => 'user-' + Math.random().toString(36).slice(2, 9), [])
-  const userName = useMemo(() => '用户-' + Math.random().toString(36).slice(2, 5), [])
+  const userId = useMemo(() => session?.user?.id || 'user-' + Math.random().toString(36).slice(2, 9), [session?.user?.id])
   const userColor = useMemo(() => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'), [])
+
+  // 根据权限和用户名生成显示名称
+  const userName = useMemo(() => {
+    if (!permissions?.permission) return '访客'
+    const role = roleLabels[permissions.permission] || '访客'
+    const name = session?.user?.name || session?.user?.email?.split('@')[0] || '匿名用户'
+    return `[${role}] ${name}`
+  }, [permissions?.permission, session?.user?.name, session?.user?.email])
 
   const { editor, provider, isSynced, isOffline, ydoc } = useEditor({
     docId: docId,
@@ -57,6 +74,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
           canInvite: data.canInvite,
           canDelete: data.canDelete,
           isOwner: data.isOwner,
+          permission: data.permission,
         })
         setLoadingPerms(false)
       })
