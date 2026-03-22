@@ -9,6 +9,7 @@ import { CollaboratorsPanel } from '@/components/editor/collaborators-panel'
 import { RemoteCursors } from '@/components/editor/remote-cursors'
 import { useEffect, useState, use, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
+import '@/styles/editor.css'
 
 export default function EditorPage({ params }: { params: Promise<{ docId: string }> }) {
   // 使用 React.use() 解包 params Promise (Next.js 16)
@@ -84,7 +85,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
           <div className="bg-background rounded-lg shadow-sm border min-h-[600px] relative">
             <EditorContent
               editor={editor}
-              className="prose prose-sm sm:prose lg:prose-lg xl:prose-xl max-w-none p-6 focus:outline-none"
+              className="tiptap max-w-none p-6 focus:outline-none"
             />
             {/* 远程光标渲染层 */}
             <RemoteCursors editor={editor} remoteCursors={remoteCursors} />

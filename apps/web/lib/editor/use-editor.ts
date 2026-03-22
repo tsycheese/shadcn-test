@@ -118,7 +118,7 @@ export function useEditor({
     // 编辑器样式
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl focus:outline-none min-h-[500px] p-4',
+        class: 'tiptap focus:outline-none min-h-[500px]',
       },
     },
   }, [ydoc])
