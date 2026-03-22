@@ -87,6 +87,7 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
     if (
       !editor ||
       !editor.view ||
+      !editor.view.dom ||
       !containerRef.current ||
       remoteCursors.length === 0
     ) {
@@ -118,7 +119,10 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
 
     return () => {
       cancelRaf()
-      editor.view.dom?.removeEventListener("scroll", handleScroll)
+      // 清理前检查 editor.view 是否存在，避免访问已销毁的编辑器
+      if (editor?.view?.dom) {
+        editor.view.dom.removeEventListener("scroll", handleScroll)
+      }
       editor.off("update", handleUpdate)
       editor.off("selectionUpdate", handleUpdate)
     }
