@@ -12,6 +12,7 @@ export default function VerifyEmailPage() {
   const hasCheckedRef = useRef(false)
   const [verifying, setVerifying] = useState(true)
 
+  // 1. 初始验证逻辑
   useEffect(() => {
     if (hasCheckedRef.current) return
     hasCheckedRef.current = true
@@ -25,9 +26,23 @@ export default function VerifyEmailPage() {
     }
   }, [searchParams])
 
+  // 2. 成功验证后的自动跳转逻辑 + 更新会话
+  useEffect(() => {
+    const success = searchParams.get("success")
+    // 只有在验证成功时才启动定时器
+    if (success) {
+      const timer = setTimeout(() => {
+        router.push("/dashboard")
+      }, 3000)
+      // 清理函数：组件卸载或依赖变化时清除定时器
+      return () => clearTimeout(timer)
+    }
+  }, [router, searchParams])
+
   const error = searchParams.get("error")
   const success = searchParams.get("success")
 
+  // 验证中状态
   if (verifying) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/50">
@@ -42,6 +57,7 @@ export default function VerifyEmailPage() {
     )
   }
 
+  // 验证失败状态
   if (error) {
     const errorMessages: Record<string, string> = {
       "invalid-token": "验证链接无效",
@@ -70,15 +86,8 @@ export default function VerifyEmailPage() {
     )
   }
 
+  // 验证成功状态
   if (success) {
-    // 3 秒后自动跳转到 dashboard
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        router.push("/dashboard")
-      }, 3000)
-      return () => clearTimeout(timer)
-    }, [router])
-
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/50">
         <Card className="w-full max-w-md">
@@ -100,6 +109,7 @@ export default function VerifyEmailPage() {
     )
   }
 
+  // 默认状态（无 token/error/success）
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/50">
       <Card className="w-full max-w-md">
