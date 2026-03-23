@@ -71,6 +71,14 @@ export default function VerifyEmailPage() {
   }
 
   if (success) {
+    // 3 秒后自动跳转到 dashboard
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        router.push("/dashboard")
+      }, 3000)
+      return () => clearTimeout(timer)
+    }, [router])
+
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/50">
         <Card className="w-full max-w-md">
@@ -79,10 +87,13 @@ export default function VerifyEmailPage() {
             <CardTitle className="text-green-600">验证成功！</CardTitle>
             <CardDescription>你的邮箱已验证，可以开始使用了</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button className="w-full" onClick={() => router.push("/dashboard")}>
+          <CardContent className="text-center">
+            <Button className="w-full mb-4" onClick={() => router.push("/dashboard")}>
               进入仪表盘
             </Button>
+            <p className="text-sm text-muted-foreground">
+              将在 3 秒后自动跳转...
+            </p>
           </CardContent>
         </Card>
       </div>
