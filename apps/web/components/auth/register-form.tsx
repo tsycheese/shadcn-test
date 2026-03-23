@@ -58,10 +58,10 @@ export function RegisterForm() {
         redirect: false,
       })
 
-      router.push("/dashboard")
+      router.push("/dashboard?verified=reminder")
       router.refresh()
-    } catch (err: any) {
-      setError(err.message || "注册失败，请稍后重试")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "注册失败，请稍后重试")
     } finally {
       setIsLoading(false)
     }
