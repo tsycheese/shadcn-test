@@ -10,7 +10,8 @@ interface DashboardPageProps {
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await auth()
-  const showVerifiedReminder = searchParams.verified === "reminder"
+  const { verified } = await searchParams
+  const showVerifiedReminder = verified === "reminder"
   const isEmailVerified = !!session?.user?.emailVerified
 
   return (
