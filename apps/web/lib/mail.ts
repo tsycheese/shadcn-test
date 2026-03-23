@@ -131,3 +131,55 @@ export async function sendPasswordResetEmail({
     `,
   })
 }
+
+/**
+ * 发送邮箱验证邮件参数
+ */
+interface SendVerificationEmailOptions {
+  to: string
+  token: string
+  expires: Date
+}
+
+/**
+ * 发送邮箱验证邮件
+ */
+export async function sendVerificationEmail({
+  to,
+  token,
+  expires,
+}: SendVerificationEmailOptions): Promise<void> {
+  const verifyLink = `${process.env.NEXTAUTH_URL}/verify-email?token=${token}`
+
+  await sendEmail({
+    to,
+    subject: "验证你的邮箱地址",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333;">欢迎加入！</h2>
+        <p style="color: #666;">感谢你的注册，请点击下方按钮验证你的邮箱地址：</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verifyLink}"
+             style="background-color: #0066cc; color: white; padding: 12px 30px;
+                    text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
+            验证邮箱
+          </a>
+        </div>
+
+        <p style="color: #999; font-size: 14px; margin-top: 15px;">
+          或者复制以下链接到浏览器：<br/>
+          <a href="${verifyLink}" style="color: #0066cc;">${verifyLink}</a>
+        </p>
+
+        <p style="color: #999; font-size: 14px; margin-top: 15px;">
+          链接有效期至：${expires.toLocaleString("zh-CN")}
+        </p>
+
+        <p style="color: #999; font-size: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+          ⚠️ 如果你没有注册此账户，请忽略此邮件。
+        </p>
+      </div>
+    `,
+  })
+}
