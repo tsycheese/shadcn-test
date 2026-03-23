@@ -2,12 +2,26 @@ import { auth } from "@/lib/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { Button } from "@workspace/ui/components/button"
 import Link from "next/link"
+import { DashboardBanners } from "@/components/dashboard-banners"
 
-export default async function DashboardPage() {
+interface DashboardPageProps {
+  searchParams: { verified?: string }
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await auth()
-  
+  const showVerifiedReminder = searchParams.verified === "reminder"
+  const isEmailVerified = !!session?.user?.emailVerified
+
   return (
     <div className="container mx-auto py-8 px-4">
+      {/* 横幅区域 */}
+      <DashboardBanners
+        showVerifiedReminder={showVerifiedReminder}
+        isEmailVerified={isEmailVerified}
+      />
+
+      {/* 页面标题 */}
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">欢迎回来，{session?.user?.name || "用户"}</h1>
