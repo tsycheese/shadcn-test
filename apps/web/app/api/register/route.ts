@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@workspace/database"
 import bcrypt from "bcryptjs"
 import { registerInputSchema } from "@/lib/validations/auth"
+import { generateVerificationToken, sendVerificationEmail } from "@/lib/mail"
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,6 +40,23 @@ export async function POST(req: NextRequest) {
         name: name || email.split("@")[0],
         passwordHash,
       },
+    })
+
+    // 生成验证 token 并发送验证邮件
+    const { token, expires } = generateVerificationToken(user.email)
+
+    await prisma.verificationToken.create({
+      data: {
+        identifier: user.email,
+        token,
+        expires,
+      },
+    })
+
+    await sendVerificationEmail({
+      to: user.email,
+      token,
+      expires,
     })
 
     return NextResponse.json({ success: true, userId: user.id })
