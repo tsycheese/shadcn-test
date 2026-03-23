@@ -2,12 +2,13 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { User, Lock, Trash2 } from "lucide-react"
+import { User, Lock, Mail, Trash2 } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
 
 const navItems = [
   { href: "/settings/profile", label: "个人资料", icon: User },
   { href: "/settings/account", label: "账户安全", icon: Lock },
+  { href: "/settings/verification", label: "邮箱验证", icon: Mail },
   { href: "/settings/danger", label: "危险区域", icon: Trash2 },
 ]
 
