@@ -14,7 +14,7 @@ export function UnverifiedBanner() {
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
-    const dismissed = localStorage.getItem(DISMISS_KEY)
+    const dismissed = localStorage.getItem(DISMISSED_KEY)
     const dismissedTime = dismissed ? parseInt(dismissed, 10) : 0
     const now = Date.now()
 
@@ -24,7 +24,7 @@ export function UnverifiedBanner() {
   }, [])
 
   const handleDismiss = () => {
-    localStorage.setItem(DISMISS_KEY, Date.now().toString())
+    localStorage.setItem(DISMISSED_KEY, Date.now().toString())
     setIsVisible(false)
   }
 
