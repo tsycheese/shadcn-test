@@ -76,9 +76,14 @@ const config: NextAuthConfig = {
         token.emailVerified = user.emailVerified
       }
 
-      // 处理会话更新
-      if (trigger === "update" && session) {
-        return { ...token, ...session.user }
+      // 处理会话更新 - 从数据库重新获取最新数据
+      if (trigger === "update" || session?.user?.emailVerified !== token.emailVerified) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+        })
+        if (dbUser) {
+          token.emailVerified = dbUser.emailVerified?.toISOString() || null
+        }
       }
 
       return token
@@ -87,7 +92,7 @@ const config: NextAuthConfig = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string
-        session.user.emailVerified = token.emailVerified as string | null
+        session.user.emailVerified = token.emailVerified as (Date & string) | null
       }
       return session
     },
@@ -108,6 +113,6 @@ const config: NextAuthConfig = {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { handlers, auth, signIn, signOut } = NextAuth(config) as any
+const { handlers, auth, signIn, signOut, unstable_update } = NextAuth(config) as any
 
-export { handlers, auth, signIn, signOut }
+export { handlers, auth, signIn, signOut, unstable_update }
