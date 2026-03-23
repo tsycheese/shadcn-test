@@ -53,6 +53,18 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// 密码重置令牌
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([email])
+}
+
 // 文档模型
 model Document {
   id            String    @id @default(uuid())
