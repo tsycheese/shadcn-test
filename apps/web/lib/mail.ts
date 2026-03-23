@@ -79,3 +79,55 @@ export function generateResetToken(email: string) {
 
   return { token, expires }
 }
+
+/**
+ * 发送密码重置邮件参数
+ */
+interface SendPasswordResetEmailOptions {
+  to: string
+  token: string
+  expires: Date
+}
+
+/**
+ * 发送密码重置邮件
+ */
+export async function sendPasswordResetEmail({
+  to,
+  token,
+  expires,
+}: SendPasswordResetEmailOptions): Promise<void> {
+  const resetLink = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`
+
+  await sendEmail({
+    to,
+    subject: "重置你的密码",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333;">密码重置请求</h2>
+        <p style="color: #666;">你请求重置密码，请点击下方按钮设置新密码：</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}"
+             style="background-color: #0066cc; color: white; padding: 12px 30px;
+                    text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
+            重置密码
+          </a>
+        </div>
+
+        <p style="color: #999; font-size: 14px; margin-top: 15px;">
+          或者复制以下链接到浏览器：<br/>
+          <a href="${resetLink}" style="color: #0066cc;">${resetLink}</a>
+        </p>
+
+        <p style="color: #999; font-size: 14px; margin-top: 15px;">
+          链接有效期至：${expires.toLocaleString("zh-CN")}
+        </p>
+
+        <p style="color: #999; font-size: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+          ⚠️ 如果你没有请求重置密码，请忽略此邮件。
+        </p>
+      </div>
+    `,
+  })
+}
