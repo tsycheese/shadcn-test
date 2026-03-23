@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@workspace/database"
+import { unstable_update } from "@/lib/auth";
 
 /**
  * GET /api/auth/verify-email
@@ -30,13 +31,20 @@ export async function GET(req: NextRequest) {
     }
 
     // 更新用户邮箱验证状态
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { email: verificationToken.identifier },
       data: { emailVerified: new Date() },
     })
 
     // 删除 token
     await prisma.verificationToken.delete({ where: { token } })
+
+    // 更新会话，让前端获取最新的用户数据
+    await unstable_update({
+      user: {
+        emailVerified: updatedUser.emailVerified?.toISOString() || null,
+      },
+    })
 
     // 跳转成功页面
     return NextResponse.redirect(new URL("/verify-email?success=true", req.url))
