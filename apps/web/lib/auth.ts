@@ -54,6 +54,7 @@ const config: NextAuthConfig = {
           email: user.email,
           name: user.name,
           image: user.image,
+          emailVerified: user.emailVerified?.toISOString() || null,
         }
       },
     }),
@@ -72,6 +73,7 @@ const config: NextAuthConfig = {
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
+        token.emailVerified = user.emailVerified
       }
 
       // 处理会话更新
@@ -85,6 +87,7 @@ const config: NextAuthConfig = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string
+        session.user.emailVerified = token.emailVerified as string | null
       }
       return session
     },

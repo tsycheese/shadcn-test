@@ -128,6 +128,11 @@ export async function acceptInvitation(
     throw new Error("邮箱不匹配，请使用被邀请的邮箱登录")
   }
 
+  // 检查邮箱是否已验证
+  if (!user.emailVerified) {
+    throw new Error("请先验证你的邮箱地址")
+  }
+
   // 检查是否已是协作者
   const existingCollab = await prisma.documentCollaborator.findFirst({
     where: {
