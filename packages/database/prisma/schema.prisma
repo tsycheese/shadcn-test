@@ -34,6 +34,11 @@ model User {
   passwordHash  String?
   image         String?
 
+  // Auth.js 关系
+  accounts Account[]
+  sessions Session[]
+
+  // 业务关系
   documents         Document[]           @relation("DocumentOwner")
   collaborations    DocumentCollaborator[] @relation("UserCollaborations")
   invitationsSent   DocumentInvitation[]   @relation("InvitationsSent")
@@ -42,6 +47,38 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   @@index([email])
+}
+
+// Auth.js - OAuth 账户表
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// Auth.js - 会话表（使用 database session 策略时需要）
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // 邮箱验证令牌
