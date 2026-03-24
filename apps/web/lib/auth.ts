@@ -83,6 +83,29 @@ const config: NextAuthConfig = {
   },
 
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // GitHub 登录时自动验证邮箱
+      if (account?.provider === "github") {
+        try {
+          // 检查用户是否存在
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email?.toLowerCase() },
+          })
+
+          if (existingUser && !existingUser.emailVerified) {
+            // 如果是 GitHub 登录，自动标记邮箱为已验证
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { emailVerified: new Date() },
+            })
+          }
+        } catch (error) {
+          console.error("GitHub 邮箱验证失败:", error)
+        }
+      }
+      return true
+    },
+
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
