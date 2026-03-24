@@ -100,10 +100,33 @@ export async function DELETE(req: NextRequest) {
       )
     }
 
-    // 删除用户（包括相关文档）
-    await prisma.user.delete({
-      where: { id: session.user.id },
-    })
+    // 级联删除相关数据
+    await prisma.$transaction([
+      // 1. 删除用户发出的邀请
+      prisma.documentInvitation.deleteMany({
+        where: { invitedBy: session.user.id },
+      }),
+      // 2. 删除用户的协作者关系
+      prisma.documentCollaborator.deleteMany({
+        where: { userId: session.user.id },
+      }),
+      // 3. 删除用户拥有的文档
+      prisma.document.deleteMany({
+        where: { ownerId: session.user.id },
+      }),
+      // 4. 删除 OAuth 账户
+      prisma.account.deleteMany({
+        where: { userId: session.user.id },
+      }),
+      // 5. 删除会话
+      prisma.session.deleteMany({
+        where: { userId: session.user.id },
+      }),
+      // 6. 最后删除用户
+      prisma.user.delete({
+        where: { id: session.user.id },
+      }),
+    ])
 
     return NextResponse.json({ success: true })
   } catch (error) {
