@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { Button } from "@workspace/ui/components/button"
 import { Loader2 } from "lucide-react"
 
-export default function InvitePage() {
+// 内部组件：实际的邀请页面内容
+function InviteContent() {
   const params = useParams()
   const router = useRouter()
   const { data: session, status } = useSession()
@@ -28,7 +29,7 @@ export default function InvitePage() {
         setLoading(false)
       })
       .catch(() => {
-        setError("邀请不存在或已失效")
+        setError("邀请无效或已失效")
         setLoading(false)
       })
   }, [params.token])
@@ -146,5 +147,20 @@ export default function InvitePage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// 主页面：使用 Suspense 包裹
+export default function InvitePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-muted/50">
+        <div className="text-center">
+          <p className="text-muted-foreground">加载中...</p>
+        </div>
+      </div>
+    }>
+      <InviteContent />
+    </Suspense>
   )
 }
