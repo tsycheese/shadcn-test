@@ -34,6 +34,11 @@ model User {
   passwordHash  String?
   image         String?
 
+  // 账户删除相关
+  deletionRequestedAt DateTime?  // 删除申请时间
+  deletionToken       String?    @unique  // 删除确认 token
+  deletionTokenExpires DateTime?  // 删除 token 过期时间
+
   // Auth.js 关系
   accounts Account[]
   sessions Session[]
