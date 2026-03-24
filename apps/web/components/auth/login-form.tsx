@@ -16,11 +16,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@workspace/ui/components/form"
+import { Github } from "lucide-react"
+import { Separator } from "@workspace/ui/components/separator"
 
 export function LoginForm() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [githubLoading, setGithubLoading] = useState(false)
 
   const form = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
@@ -55,9 +58,47 @@ export function LoginForm() {
     }
   }
 
+  async function handleGitHubSignIn() {
+    setGithubLoading(true)
+    setError("")
+
+    try {
+      await signIn("github", {
+        redirectTo: "/dashboard",
+      })
+    } catch {
+      setError("GitHub 登录失败，请稍后重试")
+    } finally {
+      setGithubLoading(false)
+    }
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {/* GitHub 登录按钮 */}
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={isLoading || githubLoading}
+          onClick={handleGitHubSignIn}
+        >
+          <Github className="mr-2 h-4 w-4" />
+          {githubLoading ? "登录中..." : "使用 GitHub 登录"}
+        </Button>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <Separator className="w-full" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              或者使用邮箱
+            </span>
+          </div>
+        </div>
+
         <FormField
           control={form.control}
           name="email"
@@ -68,7 +109,7 @@ export function LoginForm() {
                 <Input
                   type="email"
                   placeholder="your@email.com"
-                  disabled={isLoading}
+                  disabled={isLoading || githubLoading}
                   autoComplete="email"
                   {...field}
                 />
@@ -87,7 +128,7 @@ export function LoginForm() {
               <FormControl>
                 <Input
                   type="password"
-                  disabled={isLoading}
+                  disabled={isLoading || githubLoading}
                   autoComplete="current-password"
                   {...field}
                 />
@@ -104,7 +145,7 @@ export function LoginForm() {
         <Button
           type="submit"
           className="w-full"
-          disabled={isLoading}
+          disabled={isLoading || githubLoading}
         >
           {isLoading ? "登录中..." : "登录"}
         </Button>
