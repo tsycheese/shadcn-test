@@ -183,3 +183,61 @@ export async function sendVerificationEmail({
     `,
   })
 }
+
+/**
+ * 发送删除账户确认邮件参数
+ */
+interface SendDeletionConfirmationEmailOptions {
+  to: string
+  token: string
+  expires: Date
+}
+
+/**
+ * 发送删除账户确认邮件
+ */
+export async function sendDeletionConfirmationEmail({
+  to,
+  token,
+  expires,
+}: SendDeletionConfirmationEmailOptions): Promise<void> {
+  const confirmLink = `${process.env.NEXTAUTH_URL}/settings/danger?token=${token}`
+
+  await sendEmail({
+    to,
+    subject: "确认删除你的账户",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #dc3545;">删除账户确认</h2>
+        <p style="color: #666;">你请求删除账户，请点击下方按钮确认：</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${confirmLink}"
+             style="background-color: #dc3545; color: white; padding: 12px 30px;
+                    text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
+            确认删除账户
+          </a>
+        </div>
+
+        <p style="color: #999; font-size: 14px; margin-top: 15px;">
+          或者复制以下链接到浏览器：<br/>
+          <a href="${confirmLink}" style="color: #dc3545;">${confirmLink}</a>
+        </p>
+
+        <p style="color: #999; font-size: 14px; margin-top: 15px;">
+          链接有效期至：${expires.toLocaleString("zh-CN")}
+        </p>
+
+        <div style="background-color: #fff3cd; padding: 15px; border-radius: 4px; margin-top: 20px;">
+          <p style="color: #856404; margin: 0; font-size: 14px;">
+            ⚠️ <strong>警告：</strong>删除账户后，你的所有文档和数据将被永久删除，此操作不可恢复。
+          </p>
+        </div>
+
+        <p style="color: #999; font-size: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+          ⚠️ 如果你没有请求删除账户，请忽略此邮件，你的账户不会被删除。
+        </p>
+      </div>
+    `,
+  })
+}
