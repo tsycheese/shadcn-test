@@ -8,8 +8,8 @@ import { UserList } from '@/components/editor/user-list'
 import { CollaboratorsPanel } from '@/components/editor/collaborators-panel'
 import { RemoteCursors } from '@/components/editor/remote-cursors'
 import { useEffect, useState, use, useMemo } from 'react'
-import { Loader2 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { EditorSkeleton } from './editor-skeleton'
 import '@/styles/editor.css'
 
 // 权限到角色名称的映射
@@ -85,11 +85,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
 
   // 等待 ydoc 和编辑器都准备好后再渲染
   if (loadingPerms || !ydoc || !editor) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
+    return <EditorSkeleton />
   }
 
   return (
