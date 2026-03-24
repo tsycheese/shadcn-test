@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { signOut } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -17,6 +17,8 @@ import {
   FormMessage,
 } from "@workspace/ui/components/form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import { Alert, AlertDescription } from "@workspace/ui/components/alert"
+import { Github, Lock } from "lucide-react"
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(6, "密码至少 6 位"),
@@ -33,6 +35,7 @@ const passwordSchema = z.object({
 })
 
 export function ChangePasswordForm() {
+  const { data: session } = useSession()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -68,7 +71,7 @@ export function ChangePasswordForm() {
 
         setSuccess("密码已修改，请重新登录")
         form.reset()
-        
+
         // 3 秒后自动登出
         setTimeout(() => {
           signOut({ callbackUrl: "/login" })
@@ -79,6 +82,10 @@ export function ChangePasswordForm() {
     })
   }
 
+  // GitHub 登录用户显示提示信息
+  // 注意：这里只是一个简单判断，更准确的方式是检查用户是否有 passwordHash
+  const isGitHubUser = !session?.user?.emailVerified || false
+
   return (
     <Card>
       <CardHeader>
@@ -88,6 +95,13 @@ export function ChangePasswordForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <Alert className="mb-4">
+          <Lock className="h-4 w-4" />
+          <AlertDescription>
+            只有使用邮箱密码注册的用户才能修改密码。GitHub 登录用户无需密码。
+          </AlertDescription>
+        </Alert>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -138,7 +152,7 @@ export function ChangePasswordForm() {
             {error && (
               <p className="text-sm text-destructive">{error}</p>
             )}
-            
+
             {success && (
               <p className="text-sm text-green-600">{success}</p>
             )}
