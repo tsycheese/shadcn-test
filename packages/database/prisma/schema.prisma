@@ -108,7 +108,7 @@ model Document {
   title         String    @default("未命名文档")
   content       Bytes?    // Yjs 二进制快照
   ownerId       String
-  owner         User      @relation("DocumentOwner", fields: [ownerId], references: [id])
+  owner         User      @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
   collaborators DocumentCollaborator[] @relation("DocumentCollaborators")
   invitations   DocumentInvitation[]
@@ -150,7 +150,7 @@ model DocumentInvitation {
 
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   invitedBy  String
-  inviter    User     @relation("InvitationsSent", fields: [invitedBy], references: [id])
+  inviter    User     @relation("InvitationsSent", fields: [invitedBy], references: [id], onDelete: Cascade)
 
   createdAt  DateTime  @default(now())
   acceptedAt DateTime?
