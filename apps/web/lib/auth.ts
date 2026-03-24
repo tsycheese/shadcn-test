@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
+import GitHub from "next-auth/providers/github"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@workspace/database"
 import bcrypt from "bcryptjs"
@@ -15,12 +16,24 @@ if (!process.env.DATABASE_URL) {
   console.warn("⚠️ DATABASE_URL is not set")
 }
 
+if (!process.env.AUTH_GITHUB_ID) {
+  console.warn("⚠️ AUTH_GITHUB_ID is not set - GitHub login will be disabled")
+}
+
+if (!process.env.AUTH_GITHUB_SECRET) {
+  console.warn("⚠️ AUTH_GITHUB_SECRET is not set - GitHub login will be disabled")
+}
+
 const config: NextAuthConfig = {
   adapter: PrismaAdapter(prisma) as any,
-  
+
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-for-development",
-  
+
   providers: [
+    GitHub({
+      clientId: process.env.AUTH_GITHUB_ID,
+      clientSecret: process.env.AUTH_GITHUB_SECRET,
+    }),
     Credentials({
       name: "credentials",
       credentials: {
