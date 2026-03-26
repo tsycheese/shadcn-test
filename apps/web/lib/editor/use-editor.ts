@@ -9,7 +9,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Collaboration from '@tiptap/extension-collaboration'
 import SlashCommand from './extensions/slash-command'
 import { createSlashCommandRender } from './extensions/slash-command-render'
-import { defaultCommands, type CommandItem } from '@/components/editor/slash-command/slash-command-list'
+import { filterCommands, type CommandItem } from '@/components/editor/slash-command/slash-command-list'
 
 import type { UseEditorOptions, UseEditorReturn } from './types'
 import type { Awareness } from 'y-protocols/awareness'
@@ -244,23 +244,13 @@ export function useEditor({
             suggestion: {
               char: '/',
               items: ({ query }) => {
-                const filtered = defaultCommands.filter((item) =>
-                  item.title.toLowerCase().includes(query.toLowerCase()) ||
-                  item.description.toLowerCase().includes(query.toLowerCase())
-                )
-                console.log('Suggestion items function:', { query, count: filtered.length })
-                return filtered
+                return filterCommands(query)
               },
               render: () => {
                 const slashCommandRender = createSlashCommandRender()
                 return {
                   onStart: (props) => {
                     if (!props.clientRect) return
-                    console.log('SlashCommand onStart:', { 
-                      items: props.items, 
-                      query: props.query,
-                      itemsLength: Array.isArray(props.items) ? props.items.length : 'not array'
-                    })
                     slashCommandRender.onStart({
                       editor: props.editor,
                       clientRect: props.clientRect,
@@ -272,11 +262,6 @@ export function useEditor({
                   },
                   onUpdate: (props) => {
                     if (!props.clientRect) return
-                    console.log('SlashCommand onUpdate:', { 
-                      items: props.items, 
-                      query: props.query,
-                      itemsLength: Array.isArray(props.items) ? props.items.length : 'not array'
-                    })
                     slashCommandRender.onUpdate({
                       editor: props.editor,
                       clientRect: props.clientRect,

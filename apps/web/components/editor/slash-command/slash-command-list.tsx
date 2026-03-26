@@ -21,6 +21,7 @@ import {
   Type,
   Pilcrow,
 } from 'lucide-react'
+import PinyinMatch from 'pinyin-match'
 
 export interface CommandItem {
   title: string
@@ -179,3 +180,37 @@ export const defaultCommands: CommandItem[] = [
     },
   },
 ]
+
+/**
+ * 拼音搜索匹配函数
+ * 支持中文、拼音首字母、完整拼音搜索
+ */
+export function matchCommand(query: string, item: CommandItem): boolean {
+  if (!query) return true
+  
+  const searchText = `${item.title} ${item.description}`
+  
+  // 1. 直接文本匹配
+  if (searchText.toLowerCase().includes(query.toLowerCase())) {
+    return true
+  }
+  
+  // 2. 拼音匹配（支持首字母和完整拼音）
+  const matchResult = PinyinMatch.match(searchText, query)
+  if (matchResult) {
+    return true
+  }
+  
+  return false
+}
+
+/**
+ * 过滤命令列表
+ */
+export function filterCommands(query: string): CommandItem[] {
+  if (!query) {
+    return defaultCommands
+  }
+  
+  return defaultCommands.filter((item) => matchCommand(query, item))
+}
