@@ -37,3 +37,5 @@ export interface UseEditorReturn {
   /** 上次保存时间 */
   lastSavedAt?: Date | null
 }
+
+export type { CommandItem } from '@/components/editor/slash-command/slash-command-list'
