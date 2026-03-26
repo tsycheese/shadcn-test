@@ -3,6 +3,17 @@
  * 为 Tiptap 编辑器提供清晰的视觉层次
  */
 
+/* Tippy.js 样式 (Slash Command 菜单) */
+.tippy-box {
+  background-color: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.tippy-content {
+  padding: 0;
+}
+
 /* 编辑器容器 */
 .tiptap {
   outline: none;
