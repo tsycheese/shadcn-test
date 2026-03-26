@@ -128,9 +128,13 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
     const handleScroll = () => updatePositions()
     const handleUpdate = () => updatePositions()
 
-    editorDom.addEventListener("scroll", handleScroll)
-    editor.on("update", handleUpdate)
-    editor.on("selectionUpdate", handleUpdate)
+    if (editorDom) {
+      editorDom.addEventListener("scroll", handleScroll)
+    }
+    if (editor) {
+      editor.on("update", handleUpdate)
+      editor.on("selectionUpdate", handleUpdate)
+    }
 
     return () => {
       cancelRaf()
@@ -138,8 +142,10 @@ export function RemoteCursors({ editor, remoteCursors }: RemoteCursorsProps) {
       if (editorDomRef.current) {
         editorDomRef.current.removeEventListener("scroll", handleScroll)
       }
-      editor.off("update", handleUpdate)
-      editor.off("selectionUpdate", handleUpdate)
+      if (editor) {
+        editor.off("update", handleUpdate)
+        editor.off("selectionUpdate", handleUpdate)
+      }
     }
   }, [editor, remoteCursors, updatePositions])
 
