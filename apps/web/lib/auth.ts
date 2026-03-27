@@ -110,15 +110,27 @@ const config: NextAuthConfig = {
       if (user) {
         token.id = user.id
         token.emailVerified = user.emailVerified
+        token.name = user.name
+        token.email = user.email
+        token.picture = user.image
       }
 
       // 处理会话更新 - 从数据库重新获取最新数据
       if (trigger === "update" || session?.user?.emailVerified !== token.emailVerified) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
+          select: {
+            email: true,
+            name: true,
+            image: true,
+            emailVerified: true,
+          },
         })
         if (dbUser) {
           token.emailVerified = dbUser.emailVerified?.toISOString() || null
+          token.name = dbUser.name
+          token.email = dbUser.email
+          token.picture = dbUser.image
         }
       }
 
@@ -129,6 +141,9 @@ const config: NextAuthConfig = {
       if (session.user) {
         session.user.id = token.id as string
         session.user.emailVerified = token.emailVerified as (Date & string) | null
+        session.user.name = (token.name as string | null | undefined) ?? session.user.name
+        session.user.email = (token.email as string | null | undefined) ?? session.user.email
+        session.user.image = (token.picture as string | null | undefined) ?? session.user.image
       }
       return session
     },
