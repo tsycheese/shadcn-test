@@ -7,6 +7,10 @@ import { WebsocketProvider } from 'y-websocket'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import StarterKit from '@tiptap/starter-kit'
 import Collaboration from '@tiptap/extension-collaboration'
+import { Table } from '@tiptap/extension-table'
+import { TableRow } from '@tiptap/extension-table-row'
+import { TableHeader } from '@tiptap/extension-table-header'
+import { TableCell } from '@tiptap/extension-table-cell'
 import SlashCommand from './extensions/slash-command'
 import { createSlashCommandRender } from './extensions/slash-command-render'
 import { filterCommands, type CommandItem } from '@/components/editor/slash-command/slash-command-list'
@@ -238,6 +242,24 @@ export function useEditor({
           // Yjs 协同扩展：同步文档内容
           Collaboration.configure({
             document: ydoc,
+          }),
+          // 表格扩展
+          Table.configure({
+            resizable: true,
+            HTMLAttributes: {
+              class: 'not-prose',
+            },
+          }),
+          TableRow,
+          TableHeader.configure({
+            HTMLAttributes: {
+              class: 'bg-muted font-semibold',
+            },
+          }),
+          TableCell.configure({
+            HTMLAttributes: {
+              class: 'border p-2 min-w-[100px]',
+            },
           }),
           // Slash Command 命令菜单
           SlashCommand.configure({
