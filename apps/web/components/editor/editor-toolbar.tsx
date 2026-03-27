@@ -142,7 +142,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 表格 */}
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             size="sm"
