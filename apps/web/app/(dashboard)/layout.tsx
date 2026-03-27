@@ -15,9 +15,9 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   }
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex h-dvh flex-col bg-background">
       <DashboardHeader />
-      <main>{children}</main>
+      <main className="min-h-0 flex-1 overflow-auto">{children}</main>
     </div>
   )
 }

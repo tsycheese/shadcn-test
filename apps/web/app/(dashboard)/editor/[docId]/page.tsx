@@ -10,6 +10,7 @@ import { RemoteCursors } from '@/components/editor/remote-cursors'
 import { useEffect, useState, use, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { EditorSkeleton } from './editor-skeleton'
+import { EDITOR_VIEWPORT_CLASS } from '@/lib/editor/layout'
 import '@/styles/editor.css'
 
 // 权限到角色名称的映射
@@ -90,12 +91,12 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className={`flex min-h-0 flex-col ${EDITOR_VIEWPORT_CLASS}`}>
       {/* 顶部工具栏 */}
       <EditorToolbar editor={editor} />
 
       {/* 编辑器内容区域 */}
-      <div className="flex-1 overflow-auto bg-muted/20">
+      <div className="min-h-0 flex-1 overflow-auto bg-muted/20">
         <div className="max-w-4xl mx-auto py-8 px-4">
           <div className="bg-background rounded-lg shadow-sm border min-h-[600px] relative">
             <EditorContent
