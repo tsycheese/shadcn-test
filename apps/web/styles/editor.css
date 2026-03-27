@@ -208,7 +208,6 @@
   width: 100%;
   margin: 1rem 0;
   table-layout: fixed;
-  overflow: hidden;
 }
 
 .tiptap table thead {
@@ -221,27 +220,37 @@
   padding: 0.5rem 0.75rem;
   border: 1px solid hsl(0 0% 80%);
   min-width: 100px;
+  position: relative;
 }
 
 .tiptap table td {
   padding: 0.5rem 0.75rem;
   border: 1px solid hsl(0 0% 80%);
   min-width: 100px;
+  position: relative;
 }
 
 .tiptap table .selectedCell {
   background-color: hsl(0 0% 88%);
-  position: relative;
 }
 
 .tiptap table .column-resize-handle {
   position: absolute;
   right: -2px;
   top: 0;
-  bottom: -1px;
-  width: 4px;
+  bottom: 0;
+  width: 5px;
+  background-color: transparent;
+  cursor: col-resize !important;
+  z-index: 10;
+}
+
+.tiptap table .column-resize-handle:hover {
   background-color: hsl(220, 100%, 50%);
-  cursor: col-resize;
+}
+
+.tiptap table .column-resize-handle:active {
+  background-color: hsl(220, 100%, 40%);
 }
 
 .tiptap table p {
@@ -266,6 +275,6 @@
   background-color: hsl(0 0% 25%);
 }
 
-.dark .tiptap table .column-resize-handle {
+.dark .tiptap table .column-resize-handle:hover {
   background-color: hsl(220, 100%, 60%);
 }
