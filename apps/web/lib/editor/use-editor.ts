@@ -91,6 +91,8 @@ export function useEditor({
   useLayoutEffect(() => {
     const doc = new Y.Doc()
     let wsProvider: WebsocketProvider | null = null
+    let disposed = false
+    const abortController = new AbortController()
 
     // 1. 离线持久化 (IndexedDB)
     // 即使用户断网，编辑内容也会保存在浏览器
@@ -113,13 +115,6 @@ export function useEditor({
       })
 
       setProvider(wsProvider)
-
-      // 设置 Awareness 用户信息
-      wsProvider.awareness.setLocalStateField('user', {
-        id: userId,
-        name: userName,
-        color: userColor,
-      })
     } else {
       setProvider(null)
     }
@@ -127,16 +122,19 @@ export function useEditor({
     // 3. 从数据库加载内容（如果有）
     async function loadContent() {
       if (!loadContentFromDb) {
+        if (disposed) return
         setYdoc(doc)
         setIsDbLoaded(true)
         return
       }
 
       try {
-        const res = await fetch(`/api/documents/${docId}/content`)
+        const res = await fetch(`/api/documents/${docId}/content`, {
+          signal: abortController.signal,
+        })
         if (res.ok) {
           const data = await res.json()
-          if (data.content) {
+          if (!disposed && data.content) {
             // 将 base64 转换回 Buffer 并应用到 Yjs 文档
             const contentBuffer = Buffer.from(data.content, 'base64')
             const update = new Uint8Array(contentBuffer)
@@ -145,9 +143,12 @@ export function useEditor({
           }
         }
       } catch (error) {
-        console.error('加载数据库内容失败:', error)
+        if ((error as DOMException).name !== 'AbortError') {
+          console.error('加载数据库内容失败:', error)
+        }
       }
 
+      if (disposed) return
       setYdoc(doc)
       setIsDbLoaded(true)
     }
@@ -156,11 +157,28 @@ export function useEditor({
 
     // 清理函数
     return () => {
+      disposed = true
+      abortController.abort()
       wsProvider?.destroy()
       indexeddbProvider.destroy()
       doc.destroy()
     }
-  }, [docId, userId, userName, userColor, wsUrl, loadContentFromDb])
+  }, [docId, wsUrl, loadContentFromDb])
+
+  // 同步当前用户信息到 Yjs awareness，避免用户展示信息变化触发文档重新初始化
+  useEffect(() => {
+    if (!provider) return
+
+    provider.awareness.setLocalStateField('user', {
+      id: userId,
+      name: userName,
+      color: userColor,
+    })
+
+    return () => {
+      provider.awareness.setLocalStateField('user', null)
+    }
+  }, [provider, userId, userName, userColor])
 
   // 4. 自动保存：监听 Yjs 文档变化，debounce 后保存
   useEffect(() => {
