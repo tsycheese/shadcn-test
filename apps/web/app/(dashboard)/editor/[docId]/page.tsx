@@ -50,6 +50,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
     userId,
     userName,
     userColor,
+    userImage: session?.user?.image ?? null,
   })
 
   // 使用协同光标 Hook

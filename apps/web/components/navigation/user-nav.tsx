@@ -2,7 +2,7 @@
 
 import { signOut } from "next-auth/react"
 import Link from "next/link"
-import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
 import {
   DropdownMenu,
@@ -17,7 +17,7 @@ import { LogOut, Settings, User } from "lucide-react"
 interface UserNavProps {
   user: {
     name?: string | null
-    email: string
+    email?: string | null
     image?: string | null
   }
 }
@@ -25,13 +25,14 @@ interface UserNavProps {
 export function UserNav({ user }: UserNavProps) {
   const initials = user.name
     ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-    : user.email.slice(0, 2).toUpperCase()
+    : (user.email || "U").slice(0, 2).toUpperCase()
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-9 w-9">
           <Avatar className="h-9 w-9">
+            <AvatarImage src={user.image || undefined} alt={user.name || user.email || "user"} />
             <AvatarFallback className="bg-primary text-primary-foreground">
               {initials}
             </AvatarFallback>
@@ -42,7 +43,7 @@ export function UserNav({ user }: UserNavProps) {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{user.name || "用户"}</p>
-            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+            <p className="text-xs leading-none text-muted-foreground">{user.email || "-"}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

@@ -11,6 +11,8 @@ export interface UseEditorOptions {
   userName?: string
   /** 用户光标颜色（可选） */
   userColor?: string
+  /** 用户头像（可选） */
+  userImage?: string | null
   /** WebSocket 服务器地址 */
   wsUrl?: string
   /** 是否从数据库加载内容 */

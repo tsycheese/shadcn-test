@@ -45,6 +45,7 @@ export function useEditor({
   userId,
   userName = '匿名用户',
   userColor = '#958DF1',
+  userImage = null,
   wsUrl = process.env.NEXT_PUBLIC_WS_URL,
   loadContentFromDb = true, // 是否从数据库加载内容
   autoSaveToDb = true, // 是否自动保存到数据库
@@ -173,12 +174,13 @@ export function useEditor({
       id: userId,
       name: userName,
       color: userColor,
+      image: userImage,
     })
 
     return () => {
       provider.awareness.setLocalStateField('user', null)
     }
-  }, [provider, userId, userName, userColor])
+  }, [provider, userId, userName, userColor, userImage])
 
   // 4. 自动保存：监听 Yjs 文档变化，debounce 后保存
   useEffect(() => {

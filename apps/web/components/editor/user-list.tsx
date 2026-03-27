@@ -2,12 +2,13 @@
 
 import { WebsocketProvider } from 'y-websocket'
 import { useState, useEffect } from 'react'
-import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 
 interface User {
   id: string
   name: string
   color: string
+  image?: string | null
 }
 
 interface UserListProps {
@@ -56,6 +57,7 @@ export function UserList({ provider }: UserListProps) {
             style={{ borderColor: user.color }}
             title={user.name}
           >
+            <AvatarImage src={user.image || undefined} alt={user.name} />
             <AvatarFallback 
               className="text-[10px] font-medium text-white"
               style={{ backgroundColor: user.color }}

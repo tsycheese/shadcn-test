@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
 import {
   DropdownMenu,
@@ -17,6 +17,7 @@ interface Collaborator {
   userId: string
   name: string | null
   email: string
+  image?: string | null
   permission: "READ" | "WRITE" | "ADMIN"
 }
 
@@ -101,6 +102,7 @@ export function CollaboratorsList({ documentId, canManage }: CollaboratorsListPr
           >
             <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
+                <AvatarImage src={collab.image || undefined} alt={collab.name || collab.email} />
                 <AvatarFallback className="text-xs">
                   {(collab.name || collab.email).slice(0, 2).toUpperCase()}
                 </AvatarFallback>
