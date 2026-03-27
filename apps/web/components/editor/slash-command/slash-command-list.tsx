@@ -20,6 +20,7 @@ import {
   Minus,
   Type,
   Pilcrow,
+  Table,
 } from 'lucide-react'
 import PinyinMatch from 'pinyin-match'
 
@@ -28,6 +29,7 @@ export interface CommandItem {
   description: string
   icon: React.ComponentType<{ className?: string }>
   command: (props: { editor: any; range: { from: number; to: number } }) => void
+  keywords?: string // 英文关键词（可选）
 }
 
 export interface SlashCommandListProps {
@@ -179,28 +181,47 @@ export const defaultCommands: CommandItem[] = [
       editor.chain().focus().deleteRange(range).setHorizontalRule().run()
     },
   },
+  {
+    title: '表格',
+    description: '插入 3x3 表格',
+    icon: Table,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertTable({
+        rows: 3,
+        cols: 3,
+        withHeaderRow: true,
+      }).run()
+    },
+    keywords: 'table grid', // 英文关键词
+  },
 ]
 
 /**
  * 拼音搜索匹配函数
- * 支持中文、拼音首字母、完整拼音搜索
+ * 支持中文、拼音首字母、完整拼音、英文关键词搜索
  */
 export function matchCommand(query: string, item: CommandItem): boolean {
   if (!query) return true
-  
+
   const searchText = `${item.title} ${item.description}`
-  
-  // 1. 直接文本匹配
-  if (searchText.toLowerCase().includes(query.toLowerCase())) {
+  const queryLower = query.toLowerCase()
+
+  // 1. 直接文本匹配（中文或英文）
+  if (searchText.toLowerCase().includes(queryLower)) {
     return true
   }
-  
-  // 2. 拼音匹配（支持首字母和完整拼音）
+
+  // 2. 英文关键词匹配
+  if (item.keywords && item.keywords.toLowerCase().includes(queryLower)) {
+    return true
+  }
+
+  // 3. 拼音匹配（支持首字母和完整拼音）
   const matchResult = PinyinMatch.match(searchText, query)
   if (matchResult) {
     return true
   }
-  
+
   return false
 }
 
