@@ -201,3 +201,71 @@
 .dark .tiptap hr {
   border-top-color: hsl(0 0% 35%);
 }
+
+/* 表格样式 */
+.tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  table-layout: fixed;
+  overflow: hidden;
+}
+
+.tiptap table thead {
+  background-color: hsl(0 0% 93%);
+}
+
+.tiptap table th {
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid hsl(0 0% 80%);
+  min-width: 100px;
+}
+
+.tiptap table td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid hsl(0 0% 80%);
+  min-width: 100px;
+}
+
+.tiptap table .selectedCell {
+  background-color: hsl(0 0% 88%);
+  position: relative;
+}
+
+.tiptap table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -1px;
+  width: 4px;
+  background-color: hsl(220, 100%, 50%);
+  cursor: col-resize;
+}
+
+.tiptap table p {
+  margin: 0;
+}
+
+/* 深色模式表格 */
+.dark .tiptap table {
+  border-color: hsl(0 0% 40%);
+}
+
+.dark .tiptap table thead {
+  background-color: hsl(0 0% 20%);
+}
+
+.dark .tiptap table th,
+.dark .tiptap table td {
+  border-color: hsl(0 0% 40%);
+}
+
+.dark .tiptap table .selectedCell {
+  background-color: hsl(0 0% 25%);
+}
+
+.dark .tiptap table .column-resize-handle {
+  background-color: hsl(220, 100%, 60%);
+}
