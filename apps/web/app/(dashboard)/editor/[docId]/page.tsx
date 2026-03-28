@@ -1,60 +1,91 @@
 "use client"
 
-import { EditorContent } from '@tiptap/react'
-import { useEditor, useCollaborationCursor } from '@/lib/editor/use-editor'
-import { EditorToolbar } from '@/components/editor/editor-toolbar'
-import { SyncStatus } from '@/components/editor/sync-status'
-import { UserList } from '@/components/editor/user-list'
-import { CollaboratorsPanel } from '@/components/editor/collaborators-panel'
-import { RemoteCursors } from '@/components/editor/remote-cursors'
-import { useEffect, useState, use, useMemo } from 'react'
-import { useSession } from 'next-auth/react'
-import { EditorSkeleton } from './editor-skeleton'
-import { EDITOR_VIEWPORT_CLASS } from '@/lib/editor/layout'
-import '@/styles/editor.css'
+import { use, useEffect, useId, useMemo, useState } from "react"
+import { EditorContent } from "@tiptap/react"
+import { ListTree } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { Button } from "@workspace/ui/components/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@workspace/ui/components/sheet"
+import { TocPanel } from "@/components/editor/toc-panel"
+import { CollaboratorsPanel } from "@/components/editor/collaborators-panel"
+import { EditorToolbar } from "@/components/editor/editor-toolbar"
+import { RemoteCursors } from "@/components/editor/remote-cursors"
+import { SyncStatus } from "@/components/editor/sync-status"
+import { UserList } from "@/components/editor/user-list"
+import { EditorSkeleton } from "./editor-skeleton"
+import { EDITOR_VIEWPORT_CLASS } from "@/lib/editor/layout"
+import type { TocItem } from "@/lib/editor/toc"
+import { useCollaborationCursor, useEditor } from "@/lib/editor/use-editor"
+import { useToc } from "@/lib/editor/use-toc"
+import "@/styles/editor.css"
 
-// 权限到角色名称的映射
 const roleLabels: Record<string, string> = {
-  ADMIN: '管理员',
-  WRITE: '编辑者',
-  READ: '访客',
+  ADMIN: "\u7ba1\u7406\u5458",
+  WRITE: "\u7f16\u8f91\u8005",
+  READ: "\u8bbf\u5ba2",
 }
 
-export default function EditorPage({ params }: { params: Promise<{ docId: string }> }) {
-  // 使用 React.use() 解包 params Promise (Next.js 16)
+function getColorFromSeed(seedText: string): string {
+  let hash = 0
+
+  for (let i = 0; i < seedText.length; i += 1) {
+    hash = (hash << 5) - hash + seedText.charCodeAt(i)
+    hash |= 0
+  }
+
+  const safeColor = Math.abs(hash) % 0xffffff
+  return `#${safeColor.toString(16).padStart(6, "0")}`
+}
+
+export default function EditorPage({
+  params,
+}: {
+  params: Promise<{ docId: string }>
+}) {
   const { docId } = use(params)
   const { data: session } = useSession()
+  const [isMobileTocOpen, setIsMobileTocOpen] = useState(false)
+  const fallbackUserId = useId().replaceAll(":", "")
 
   const [permissions, setPermissions] = useState<{
     canEdit: boolean
     canInvite: boolean
     canDelete: boolean
     isOwner: boolean
-    permission: 'ADMIN' | 'WRITE' | 'READ'
+    permission: "ADMIN" | "WRITE" | "READ"
   } | null>(null)
   const [loadingPerms, setLoadingPerms] = useState(true)
 
-  // 固定 userId 和 userColor，避免每次渲染都变化
-  const userId = useMemo(() => session?.user?.id || 'user-' + Math.random().toString(36).slice(2, 9), [session?.user?.id])
-  const userColor = useMemo(() => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'), [])
+  const userId = session?.user?.id || `guest-${fallbackUserId}`
+  const userColor = useMemo(() => getColorFromSeed(userId), [userId])
 
-  // 根据权限和用户名生成显示名称
   const userName = useMemo(() => {
-    if (!permissions?.permission) return '访客'
-    const role = roleLabels[permissions.permission] || '访客'
-    const name = session?.user?.name || session?.user?.email?.split('@')[0] || '匿名用户'
-    return `[${role}] ${name}`
-  }, [permissions?.permission, session?.user?.name, session?.user?.email])
+    if (!permissions?.permission) return "\u8bbf\u5ba2"
 
-  const { editor, provider, isSynced, isOffline, ydoc, isSaving, lastSavedAt } = useEditor({
-    docId: docId,
-    userId,
-    userName,
-    userColor,
-    userImage: session?.user?.image ?? null,
-  })
+    const role = roleLabels[permissions.permission] || "\u8bbf\u5ba2"
+    const baseName =
+      session?.user?.name ||
+      session?.user?.email?.split("@")[0] ||
+      "\u533f\u540d\u7528\u6237"
 
-  // 使用协同光标 Hook
+    return `[${role}] ${baseName}`
+  }, [permissions, session?.user?.email, session?.user?.name])
+
+  const { editor, provider, isSynced, isOffline, ydoc, isSaving, lastSavedAt } =
+    useEditor({
+      docId,
+      userId,
+      userName,
+      userColor,
+      userImage: session?.user?.image ?? null,
+    })
+
   const { remoteCursors } = useCollaborationCursor(
     provider?.awareness,
     userId,
@@ -63,11 +94,20 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
     editor
   )
 
-  // 加载权限信息
+  const {
+    toc,
+    collapsedIds,
+    activeTocId,
+    toggleCollapsed,
+    expandAll,
+    collapseAll,
+    jumpToHeading,
+  } = useToc(editor)
+
   useEffect(() => {
     fetch(`/api/documents/${docId}/permissions`)
       .then((res) => {
-        if (!res.ok) throw new Error('无权访问')
+        if (!res.ok) throw new Error("\u65e0\u6743\u8bbf\u95ee")
         return res.json()
       })
       .then((data) => {
@@ -85,35 +125,83 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
       })
   }, [docId])
 
-  // 等待 ydoc 和编辑器都准备好后再渲染
+  const handleJumpHeading = (item: TocItem) => {
+    jumpToHeading(item)
+    setIsMobileTocOpen(false)
+  }
+
   if (loadingPerms || !ydoc || !editor) {
     return <EditorSkeleton />
   }
 
   return (
     <div className={`flex min-h-0 flex-col ${EDITOR_VIEWPORT_CLASS}`}>
-      {/* 顶部工具栏 */}
       <EditorToolbar editor={editor} />
 
-      {/* 编辑器内容区域 */}
-      <div className="min-h-0 flex-1 overflow-auto bg-muted/20">
-        <div className="max-w-4xl mx-auto py-8 px-4">
-          <div className="bg-background rounded-lg shadow-sm border min-h-[600px] relative">
-            <EditorContent
-              editor={editor}
-              className="tiptap max-w-none p-6 focus:outline-none"
+      <div className="min-h-0 flex-1 bg-muted/20">
+        <div className="mx-auto flex h-full w-full max-w-[1400px]">
+          <aside className="hidden h-full w-[260px] shrink-0 border-r bg-background md:block">
+            <TocPanel
+              className="h-full"
+              toc={toc}
+              collapsedIds={collapsedIds}
+              activeId={activeTocId}
+              onToggle={toggleCollapsed}
+              onJump={handleJumpHeading}
+              onExpandAll={expandAll}
+              onCollapseAll={collapseAll}
             />
-            {/* 远程光标渲染层 */}
-            <RemoteCursors editor={editor} remoteCursors={remoteCursors} />
+          </aside>
+
+          <div className="min-h-0 flex-1 overflow-auto">
+            <div className="px-4 pt-4 md:hidden">
+              <Sheet open={isMobileTocOpen} onOpenChange={setIsMobileTocOpen}>
+                <SheetTrigger asChild>
+                  <Button type="button" variant="outline" size="sm">
+                    <ListTree className="mr-1 h-4 w-4" />
+                    {"\u76ee\u5f55"}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[280px] p-0">
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>{"\u76ee\u5f55"}</SheetTitle>
+                  </SheetHeader>
+                  <TocPanel
+                    className="h-full"
+                    toc={toc}
+                    collapsedIds={collapsedIds}
+                    activeId={activeTocId}
+                    onToggle={toggleCollapsed}
+                    onJump={handleJumpHeading}
+                    onExpandAll={expandAll}
+                    onCollapseAll={collapseAll}
+                  />
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            <div className="mx-auto max-w-4xl px-4 py-8">
+              <div className="relative min-h-[600px] rounded-lg border bg-background shadow-sm">
+                <EditorContent
+                  editor={editor}
+                  className="tiptap max-w-none p-6 focus:outline-none"
+                />
+                <RemoteCursors editor={editor} remoteCursors={remoteCursors} />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 底部状态栏 */}
-      <div className="border-t p-2 bg-background text-xs">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <div className="border-t bg-background p-2 text-xs">
+        <div className="mx-auto flex max-w-4xl items-center justify-between">
           <div className="flex items-center gap-4">
-            <SyncStatus synced={isSynced} offline={isOffline} isSaving={isSaving} lastSavedAt={lastSavedAt} />
+            <SyncStatus
+              synced={isSynced}
+              offline={isOffline}
+              isSaving={isSaving}
+              lastSavedAt={lastSavedAt}
+            />
             <CollaboratorsPanel
               documentId={docId}
               canManage={permissions?.canInvite ?? false}
