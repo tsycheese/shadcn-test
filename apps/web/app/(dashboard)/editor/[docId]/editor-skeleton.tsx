@@ -18,7 +18,7 @@ export function EditorSkeleton() {
       </div>
 
       <div className="min-h-0 flex-1 bg-muted/20">
-        <div className="mx-auto flex h-full w-full max-w-[1400px]">
+        <div className="flex h-full w-full">
           <aside
             data-testid="editor-skeleton-toc"
             className="hidden h-full w-[260px] shrink-0 border-r bg-background md:block"
@@ -32,7 +32,7 @@ export function EditorSkeleton() {
           </aside>
 
           <div className="min-h-0 flex-1 overflow-auto bg-muted/20">
-            <div className="mx-auto max-w-4xl px-4 py-8">
+            <div className="mx-auto w-full max-w-4xl px-4 py-8">
               <div className="min-h-[600px] rounded-lg border bg-background p-6 shadow-sm">
                 <div className="space-y-4">
                   <Skeleton className="h-8 w-3/4" />

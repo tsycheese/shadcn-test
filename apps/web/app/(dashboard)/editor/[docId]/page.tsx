@@ -139,7 +139,7 @@ export default function EditorPage({
       <EditorToolbar editor={editor} />
 
       <div className="min-h-0 flex-1 bg-muted/20">
-        <div className="mx-auto flex h-full w-full max-w-[1400px]">
+        <div className="flex h-full w-full">
           <aside className="hidden h-full w-[260px] shrink-0 border-r bg-background md:block">
             <TocPanel
               className="h-full"
@@ -180,7 +180,7 @@ export default function EditorPage({
               </Sheet>
             </div>
 
-            <div className="mx-auto max-w-4xl px-4 py-8">
+            <div className="mx-auto w-full max-w-4xl px-4 py-8">
               <div className="relative min-h-[600px] rounded-lg border bg-background shadow-sm">
                 <EditorContent
                   editor={editor}
