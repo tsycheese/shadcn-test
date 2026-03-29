@@ -162,7 +162,7 @@ export default function EditorPage({
                     {"\u76ee\u5f55"}
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[280px] p-0">
+                <SheetContent side="left" className="w-[280px] p-0 pt-12">
                   <SheetHeader className="sr-only">
                     <SheetTitle>{"\u76ee\u5f55"}</SheetTitle>
                   </SheetHeader>
