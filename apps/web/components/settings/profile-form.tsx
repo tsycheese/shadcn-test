@@ -24,6 +24,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
 
 const MAX_AVATAR_FILE_SIZE = 2 * 1024 * 1024
 
@@ -41,6 +47,18 @@ export function ProfileForm() {
   const [success, setSuccess] = useState("")
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false)
+
+  // 裁剪相关状态
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [isCropDialogOpen, setIsCropDialogOpen] = useState(false)
+  const [cropArea, setCropArea] = useState({ x: 0, y: 0, size: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [resizeHandle, setResizeHandle] = useState<'tl'|'tr'|'bl'|'br'|null>(null)
+  const imgRef = useRef<HTMLImageElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -57,7 +75,7 @@ export function ProfileForm() {
     })
   }, [session?.user?.name, session?.user?.email, form])
 
-  async function handleAvatarSelect(e: ChangeEvent<HTMLInputElement>) {
+  function handleAvatarSelect(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -76,33 +94,135 @@ export function ProfileForm() {
       return
     }
 
-    setIsAvatarPending(true)
-
-    try {
-      const formData = new FormData()
-      formData.append("avatar", file)
-
-      const res = await fetch("/api/user/avatar", {
-        method: "POST",
-        body: formData,
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || "头像上传失败")
-      }
-
-      setAvatarPreview(data.user?.image || null)
-      await update()
-      setSuccess("头像已更新")
-    } catch (err: unknown) {
-      setAvatarError(err instanceof Error ? err.message : "头像上传失败")
-    } finally {
-      setIsAvatarPending(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
-      }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setCropSrc(ev.target?.result as string)
+      setIsCropDialogOpen(true)
     }
+    reader.readAsDataURL(file)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  function handleImageLoad() {
+    const img = imgRef.current
+    if (!img) return
+    const size = Math.min(img.clientWidth, img.clientHeight)
+    setCropArea({
+      x: (img.clientWidth - size) / 2,
+      y: (img.clientHeight - size) / 2,
+      size,
+    })
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    e.preventDefault()
+    setIsDragging(true)
+    setDragStart({ x: e.clientX - cropArea.x, y: e.clientY - cropArea.y })
+  }
+
+  function handleResizeMouseDown(handle: 'tl'|'tr'|'bl'|'br', e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setResizeHandle(handle)
+    setDragStart({ x: e.clientX, y: e.clientY })
+  }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!imgRef.current) return
+    const img = imgRef.current
+
+    if (resizeHandle) {
+      const dx = e.clientX - dragStart.x
+      const dy = e.clientY - dragStart.y
+      setDragStart({ x: e.clientX, y: e.clientY })
+      setCropArea((prev) => {
+        let { x, y, size } = prev
+        const MIN_SIZE = 40
+        if (resizeHandle === 'br') {
+          const delta = (Math.abs(dx) > Math.abs(dy) ? dx : dy)
+          const newSize = Math.max(MIN_SIZE, Math.min(size + delta, img.clientWidth - x, img.clientHeight - y))
+          return { x, y, size: newSize }
+        }
+        if (resizeHandle === 'bl') {
+          const delta = (Math.abs(dx) > Math.abs(dy) ? -dx : dy)
+          const newSize = Math.max(MIN_SIZE, Math.min(size + delta, x + size, img.clientHeight - y))
+          return { x: Math.min(x + size - newSize, x + size - MIN_SIZE), y, size: newSize }
+        }
+        if (resizeHandle === 'tr') {
+          const delta = (Math.abs(dx) > Math.abs(dy) ? dx : -dy)
+          const newSize = Math.max(MIN_SIZE, Math.min(size + delta, img.clientWidth - x, y + size))
+          return { x, y: Math.min(y + size - newSize, y + size - MIN_SIZE), size: newSize }
+        }
+        if (resizeHandle === 'tl') {
+          const delta = (Math.abs(dx) > Math.abs(dy) ? -dx : -dy)
+          const newSize = Math.max(MIN_SIZE, Math.min(size + delta, x + size, y + size))
+          return {
+            x: Math.min(x + size - newSize, x + size - MIN_SIZE),
+            y: Math.min(y + size - newSize, y + size - MIN_SIZE),
+            size: newSize,
+          }
+        }
+        return prev
+      })
+      return
+    }
+
+    if (!isDragging) return
+    const newX = Math.max(0, Math.min(e.clientX - dragStart.x, img.clientWidth - cropArea.size))
+    const newY = Math.max(0, Math.min(e.clientY - dragStart.y, img.clientHeight - cropArea.size))
+    setCropArea((prev) => ({ ...prev, x: newX, y: newY }))
+  }
+
+  function handleMouseUp() {
+    setIsDragging(false)
+    setResizeHandle(null)
+  }
+
+  async function handleCropConfirm() {
+    const img = imgRef.current
+    const canvas = canvasRef.current
+    if (!img || !canvas || !cropSrc) return
+
+    const scaleX = img.naturalWidth / img.clientWidth
+    const scaleY = img.naturalHeight / img.clientHeight
+
+    canvas.width = 200
+    canvas.height = 200
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    ctx.drawImage(
+      img,
+      cropArea.x * scaleX,
+      cropArea.y * scaleY,
+      cropArea.size * scaleX,
+      cropArea.size * scaleY,
+      0,
+      0,
+      200,
+      200,
+    )
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return
+      setIsAvatarPending(true)
+      setIsCropDialogOpen(false)
+      try {
+        const formData = new FormData()
+        formData.append("avatar", blob, "avatar.png")
+        const res = await fetch("/api/user/avatar", { method: "POST", body: formData })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || "头像上传失败")
+        setAvatarPreview(data.user?.image || null)
+        await update()
+        setSuccess("头像已更新")
+      } catch (err: unknown) {
+        setAvatarError(err instanceof Error ? err.message : "头像上传失败")
+      } finally {
+        setIsAvatarPending(false)
+        setCropSrc(null)
+      }
+    }, "image/png")
   }
 
   async function handleAvatarRemove() {
@@ -153,6 +273,7 @@ export function ProfileForm() {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>个人资料</CardTitle>
@@ -166,7 +287,10 @@ export function ProfileForm() {
             <div className="space-y-3">
               <FormLabel>头像</FormLabel>
               <div className="flex items-center gap-4">
-                <Avatar className="h-14 w-14">
+                <Avatar
+                  className="h-14 w-14 cursor-pointer transition-opacity hover:opacity-80"
+                  onClick={() => (avatarPreview || session?.user?.image) && setIsAvatarDialogOpen(true)}
+                >
                   <AvatarImage
                     src={avatarPreview || session?.user?.image || undefined}
                     alt={session?.user?.name || session?.user?.email || "avatar"}
@@ -244,5 +368,85 @@ export function ProfileForm() {
         </Form>
       </CardContent>
     </Card>
+
+    {/* 裁剪 Dialog */}
+    <Dialog open={isCropDialogOpen} onOpenChange={(open) => { if (!open) setCropSrc(null); setIsCropDialogOpen(open) }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogTitle>裁剪头像</DialogTitle>
+        {cropSrc && (
+          <div
+            ref={containerRef}
+            className="relative select-none overflow-hidden rounded-md"
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              ref={imgRef}
+              src={cropSrc}
+              alt="裁剪预览"
+              className="block max-h-[60vh] max-w-full"
+              onLoad={handleImageLoad}
+              draggable={false}
+            />
+            {/* 遮罩：上 */}
+            <div
+              className="pointer-events-none absolute left-0 top-0 w-full bg-black/50"
+              style={{ height: cropArea.y }}
+            />
+            {/* 遮罩：下 */}
+            <div
+              className="pointer-events-none absolute left-0 w-full bg-black/50"
+              style={{ top: cropArea.y + cropArea.size, bottom: 0 }}
+            />
+            {/* 遮罩：左 */}
+            <div
+              className="pointer-events-none absolute left-0 bg-black/50"
+              style={{ top: cropArea.y, width: cropArea.x, height: cropArea.size }}
+            />
+            {/* 遮罩：右 */}
+            <div
+              className="pointer-events-none absolute bg-black/50"
+              style={{ top: cropArea.y, left: cropArea.x + cropArea.size, right: 0, height: cropArea.size }}
+            />
+            {/* 裁剪框 */}
+            <div
+              className="absolute cursor-move border-2 border-white"
+              style={{ left: cropArea.x, top: cropArea.y, width: cropArea.size, height: cropArea.size }}
+              onMouseDown={handleMouseDown}
+            >
+              {/* 四角控制点 */}
+              <div className="absolute -left-1.5 -top-1.5 h-3 w-3 cursor-nwse-resize bg-white" onMouseDown={(e) => handleResizeMouseDown('tl', e)} />
+              <div className="absolute -right-1.5 -top-1.5 h-3 w-3 cursor-nesw-resize bg-white" onMouseDown={(e) => handleResizeMouseDown('tr', e)} />
+              <div className="absolute -bottom-1.5 -left-1.5 h-3 w-3 cursor-nesw-resize bg-white" onMouseDown={(e) => handleResizeMouseDown('bl', e)} />
+              <div className="absolute -bottom-1.5 -right-1.5 h-3 w-3 cursor-nwse-resize bg-white" onMouseDown={(e) => handleResizeMouseDown('br', e)} />
+            </div>
+          </div>
+        )}
+        <canvas ref={canvasRef} className="hidden" />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setIsCropDialogOpen(false); setCropSrc(null) }}>
+            取消
+          </Button>
+          <Button onClick={handleCropConfirm} disabled={isAvatarPending}>
+            {isAvatarPending ? "上传中..." : "确认裁剪"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* 头像大图预览 Dialog */}
+    <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
+      <DialogContent className="flex flex-col items-center gap-4 sm:max-w-lg">
+        <DialogTitle>头像预览</DialogTitle>
+        <img
+          src={avatarPreview || session?.user?.image || undefined}
+          alt={session?.user?.name || session?.user?.email || "avatar"}
+          className="max-h-[70vh] max-w-full rounded-lg object-contain"
+        />
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
