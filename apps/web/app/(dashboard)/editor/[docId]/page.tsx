@@ -2,7 +2,7 @@
 
 import { use, useEffect, useId, useMemo, useState } from "react"
 import { EditorContent } from "@tiptap/react"
-import { ListTree } from "lucide-react"
+import { ListTree, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -12,6 +12,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@workspace/ui/components/sheet"
+import { cn } from "@workspace/ui/lib/utils"
 import { TocPanel } from "@/components/editor/toc-panel"
 import { CollaboratorsPanel } from "@/components/editor/collaborators-panel"
 import { EditorToolbar } from "@/components/editor/editor-toolbar"
@@ -30,6 +31,7 @@ const roleLabels: Record<string, string> = {
   WRITE: "\u7f16\u8f91\u8005",
   READ: "\u8bbf\u5ba2",
 }
+const DESKTOP_TOC_COLLAPSED_KEY = "editor.desktop_toc_collapsed"
 
 function getColorFromSeed(seedText: string): string {
   let hash = 0
@@ -51,6 +53,10 @@ export default function EditorPage({
   const { docId } = use(params)
   const { data: session } = useSession()
   const [isMobileTocOpen, setIsMobileTocOpen] = useState(false)
+  const [isDesktopTocCollapsed, setIsDesktopTocCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return window.localStorage.getItem(DESKTOP_TOC_COLLAPSED_KEY) === "1"
+  })
   const fallbackUserId = useId().replaceAll(":", "")
 
   const [permissions, setPermissions] = useState<{
@@ -125,6 +131,13 @@ export default function EditorPage({
       })
   }, [docId])
 
+  useEffect(() => {
+    window.localStorage.setItem(
+      DESKTOP_TOC_COLLAPSED_KEY,
+      isDesktopTocCollapsed ? "1" : "0"
+    )
+  }, [isDesktopTocCollapsed])
+
   const handleJumpHeading = (item: TocItem) => {
     jumpToHeading(item)
     setIsMobileTocOpen(false)
@@ -140,17 +153,47 @@ export default function EditorPage({
 
       <div className="min-h-0 flex-1 bg-muted/20">
         <div className="flex h-full w-full">
-          <aside className="hidden h-full w-[260px] shrink-0 border-r bg-background md:block">
-            <TocPanel
-              className="h-full"
-              toc={toc}
-              collapsedIds={collapsedIds}
-              activeId={activeTocId}
-              onToggle={toggleCollapsed}
-              onJump={handleJumpHeading}
-              onExpandAll={expandAll}
-              onCollapseAll={collapseAll}
-            />
+          <aside
+            className={cn(
+              "hidden h-full shrink-0 border-r bg-background transition-[width] duration-200 md:block",
+              isDesktopTocCollapsed ? "w-11" : "w-[260px]"
+            )}
+          >
+            {isDesktopTocCollapsed ? (
+              <div className="flex h-full items-start justify-center pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={"\u5c55\u5f00\u76ee\u5f55\u4fa7\u680f"}
+                  onClick={() => setIsDesktopTocCollapsed(false)}
+                >
+                  <PanelLeftOpen className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <TocPanel
+                className="h-full"
+                toc={toc}
+                collapsedIds={collapsedIds}
+                activeId={activeTocId}
+                onToggle={toggleCollapsed}
+                onJump={handleJumpHeading}
+                onExpandAll={expandAll}
+                onCollapseAll={collapseAll}
+                headerAction={
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={"\u6298\u53e0\u76ee\u5f55\u4fa7\u680f"}
+                    onClick={() => setIsDesktopTocCollapsed(true)}
+                  >
+                    <PanelLeftClose className="h-4 w-4" />
+                  </Button>
+                }
+              />
+            )}
           </aside>
 
           <div className="min-h-0 flex-1 overflow-auto">

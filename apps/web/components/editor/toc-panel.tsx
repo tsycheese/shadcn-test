@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 import { cn } from "@workspace/ui/lib/utils"
@@ -14,6 +15,7 @@ interface TocPanelProps {
   onJump: (item: TocItem) => void
   onExpandAll: () => void
   onCollapseAll: () => void
+  headerAction?: ReactNode
   className?: string
 }
 
@@ -25,6 +27,7 @@ export function TocPanel({
   onJump,
   onExpandAll,
   onCollapseAll,
+  headerAction,
   className,
 }: TocPanelProps) {
   return (
@@ -33,6 +36,7 @@ export function TocPanel({
         <h2 className="text-sm font-semibold">{"\u76ee\u5f55"}</h2>
 
         <div className="flex items-center gap-1">
+          {headerAction}
           <Button type="button" size="sm" variant="ghost" onClick={onExpandAll}>
             {"\u5168\u5c55"}
           </Button>
